@@ -1,0 +1,73 @@
+# place .drone.yml in repository root
+
+build:
+  my-application:
+    image: node:6.9.1
+    commands:
+      - npm install
+      - npm test
+
+publish:
+  my-application:
+    image: docker
+    registry: registry.foo.todo.io
+    username: $$DOCKER_USER
+    password: $$DOCKER_PASSWORD
+    email: todo@objectpartners.com
+    repo: my-application
+    tag: "$${COMMIT:0:7}"
+    # if application root not in repository root
+    # context: my-application
+    # if Dockerfile not in repository root
+    # file: my-application/Dockerfile
+    when:
+      branch: master
+      event: push
+  my-application-tag:
+    image: docker
+    registry: registry.foo.todo.io
+    username: $$DOCKER_USER
+    password: $$DOCKER_PASSWORD
+    email: todo@objectpartners.com
+    repo: my-application
+    tag: "$$TAG"
+    # if application root not in repository root
+    # context: my-application
+    # if Dockerfile not in repository root
+    # file: my-application/Dockerfile
+    when:
+      event: tag
+
+deploy:
+  my-application-dev:
+    image: rancher
+    url: https://rancher.foo.todo.io
+    access_key: $$RANCHER_DEV_ACCESS_KEY
+    secret_key: $$RANCHER_DEV_SECRET_KEY
+    service: stack-name/service-name
+    docker_image: registry.foo.todo.io/my-application:$${COMMIT:0:7}
+    start_first: false
+    confirm: true
+    timeout: 120
+    when:
+      branch: master
+      event: push
+
+notify:
+  slack:
+    webhook_url: $$SLACK_WEBHOOK_URL
+    channel: my-team-room
+    from: drone
+    when:
+      branch: master
+      failure: true
+      event: [push, tag]
+  pull-request:
+    image: slack
+    webhook_url: $$SLACK_WEBHOOK_URL
+    channel: my-team-room
+    template: ":pullreq: *Ready for review* - {{build.title}}\n - {{build.link_url}}\n - by {{build.author}}"
+    from: drone
+    when:
+      success: true
+      event: pull_request
