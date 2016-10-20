@@ -1,4 +1,4 @@
-Set up Drone
+### Set up Drone
 
 1. Set up RDS MySQL database / schema
 2. Set up GitHub OAuth application for Drone
@@ -18,3 +18,10 @@ Set up Drone
             2. Do this in the Dev environment. If we need Drone to deploy to other environments we can add those later.
         3. `SLACK_WEBHOOK_URL`: In case you want Slack notifications in a chat room
 
+
+
+### Set up an application in Drone
+
+1. place `.drone.yml` in repository root - use `sample.drone.yml` as a template
+2. Find repository in Drone and click "Activate Repository" (note: you must be an admin of the repository)
+3. If you want builds to run off of tags, go to the Settings tab on the repository in Drone and toggle "Tag Hooks" to ON
