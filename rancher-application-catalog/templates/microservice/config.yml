@@ -1,0 +1,5 @@
+name: Microservice
+description: |
+    Creates a container with a single microservice
+version: 1.0-rancher0
+category: Applications

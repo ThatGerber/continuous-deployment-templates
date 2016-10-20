@@ -1,0 +1,7 @@
+app:
+  labels:
+    - io.rancher.container.hostname_override=container_name
+    - io.rancher.container.pull_image=always
+  image: registry.foo.todo.io/${image}
+  ports:
+    - ${port_app}/tcp
