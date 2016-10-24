@@ -1,0 +1,19 @@
+db:
+  image: rancher/external-service
+drone:
+  environment:
+    REMOTE_DRIVER: github
+    REMOTE_CONFIG: https://github.com/?client_id=TODO&client_secret=TODO&orgs=TODO&open=true
+    DATABASE_DRIVER: mysql
+    DATABASE_CONFIG: TODO:TODO@tcp(db:3306)/drone?parseTime=true
+    DOCKER_HOST: unix:///var/run/docker.sock
+    DOCKER_WORKER_NODES: unix:///var/run/docker.sock,unix:///var/run/docker.sock
+    PLUGIN_PARAMS: DOCKER_USER=todo DOCKER_PASSWORD=todo RANCHER_DEV_ACCESS_KEY=todo RANCHER_DEV_SECRET_KEY=todo SLACK_WEBHOOK_URL=todo
+  labels:
+    io.rancher.container.pull_image: always
+    io.rancher.scheduler.affinity:host_label: drone.target=true
+    io.rancher.container.hostname_override: container_name
+  image: drone/drone:0.4
+  volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+  stdin_open: true

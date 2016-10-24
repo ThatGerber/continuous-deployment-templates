@@ -1,0 +1,34 @@
+.catalog:
+  name: Microservice
+  version: 1.0-rancher0
+  uuid: microservice-0
+  description: |
+    Creates a container with a single microservice
+  questions:
+    - variable: "image"
+      type: "string"
+      required: true
+      label: "Container Image"
+      description: Container image to run from private registry
+    - variable: "port_app"
+      type: "int"
+      required: true
+      label: "Application Port"
+      description: TCP port that application listens on
+      default: 8080
+    - variable: "name"
+      type: "string"
+      required: true
+      label: "Service Name"
+      description: "The name of the service"
+app:
+  scale: 1
+  health_check:
+    port: ${port_app}
+    interval: 2000
+    initializing_timeout: 300000
+    unhealthy_threshold: 3
+    strategy: recreate
+    response_timeout: 2000
+    request_line: GET "/ping" "HTTP/1.0"
+    healthy_threshold: 2
