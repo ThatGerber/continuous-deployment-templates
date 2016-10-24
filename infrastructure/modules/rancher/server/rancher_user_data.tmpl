@@ -1,4 +1,8 @@
 #cloud-config
+packages:
+  - ntp
+  - linux-image-extra-virtual
+  - linux-image-extra-3.13.0-67-generic
 write_files:
   - path: /opt/docker/install.sh
     permissions: "0755"
@@ -65,6 +69,5 @@ write_files:
       exec /var/lib/rancher/bin/rancher-start.sh $IMAGE
 
 runcmd:
-  - [ cloud-init-per, once, ssm, /opt/ssm-install.sh ]
   - [ cloud-init-per, once, docker, /opt/docker/install.sh, 1.11.2-0~trusty ]
   - [ cloud-init-per, once, rancher, /opt/rancher/rancher.sh, "${image}" ]

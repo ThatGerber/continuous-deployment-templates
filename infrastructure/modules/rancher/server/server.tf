@@ -1,15 +1,21 @@
 resource "aws_instance" "rancher-server" {
   ami = "${var.ami}"
+  key_name = "rancher"
   instance_type = "m4.large"
-  key_name = "rancher-server"
-  security_groups = [
-    "${aws_security_group.rancher.id}",
-    "${aws_security_group.db_access.id}"]
+  vpc_security_group_ids = [
+    "${var.vpc_sg}",
+    "${aws_security_group.db_access.id}",
+    "${aws_security_group.rancher.id}"
+  ]
+  subnet_id = "subnet-bfac83c9"
   associate_public_ip_address = true
   user_data = "${data.template_file.rancher_server_user_data.rendered}"
   root_block_device {
     volume_type = "gp2"
     volume_size = "32"
+  }
+  tags {
+    Name = "rancher-server"
   }
 }
 
@@ -25,8 +31,7 @@ resource "aws_security_group" "rancher" {
     protocol = "tcp"
     self = true
     cidr_blocks = [
-      "${var.vpc_private_subnet}",
-      "${var.vpc_public_subnet}"
+      "0.0.0.0/0"
     ]
   }
   ingress {
@@ -34,8 +39,7 @@ resource "aws_security_group" "rancher" {
     to_port = 22
     protocol = "tcp"
     cidr_blocks = [
-      "${var.vpc_private_subnet}",
-      "${var.vpc_public_subnet}"
+      "0.0.0.0/0"
     ]
   }
   ingress {
@@ -43,8 +47,7 @@ resource "aws_security_group" "rancher" {
     to_port = 443
     protocol = "tcp"
     cidr_blocks = [
-      "${var.vpc_private_subnet}",
-      "${var.vpc_public_subnet}"
+      "0.0.0.0/0"
     ]
   }
   ingress {
@@ -52,35 +55,8 @@ resource "aws_security_group" "rancher" {
     to_port = 8080
     protocol = "tcp"
     cidr_blocks = [
-      "${var.vpc_private_subnet}",
-      "${var.vpc_public_subnet}"
+      "0.0.0.0/0"
     ]
-  }
-
-  //Rancher IPSEC
-  ingress {
-    from_port = 500
-    to_port = 500
-    protocol = "udp"
-    self = true
-  }
-  egress {
-    from_port = 500
-    to_port = 500
-    protocol = "udp"
-    self = true
-  }
-  ingress {
-    from_port = 4500
-    to_port = 4500
-    protocol = "udp"
-    self = true
-  }
-  egress {
-    from_port = 4500
-    to_port = 4500
-    protocol = "udp"
-    self = true
   }
 }
 
@@ -121,16 +97,17 @@ EOF
 }
 
 //Route 53 Entry
-/*resource "aws_route53_record" "rancher_dns" {
+resource "aws_route53_record" "rancher_dns" {
   zone_id = "${var.r53_zone_id}"
-  name = "rancher.${var.domain}"
+  name = "rancher"
   type = "A"
-  records = ["${var.public_ip}"]
-}*/
+  ttl = "30"
+  records = ["${aws_instance.rancher-server.public_ip}"]
+}
 
 //RDS Config
 resource "aws_db_instance" "rancher_db" {
-  identifier = "rancher-db"
+  identifier = "rancher-rds"
   allocated_storage = 10
   engine = "mysql"
   engine_version = "5.6.23"
@@ -147,9 +124,11 @@ resource "aws_db_instance" "rancher_db" {
   publicly_accessible = false
   apply_immediately = false
   vpc_security_group_ids = [
+    "${var.vpc_sg}",
     "${aws_security_group.db_access.id}"
   ]
-  db_subnet_group_name = "${aws_db_subnet_group.db_subnet.id}"
+
+  db_subnet_group_name = "${aws_db_subnet_group.db_subnet.name}"
 }
 
 resource "aws_security_group" "db_access" {
@@ -167,5 +146,5 @@ resource "aws_security_group" "db_access" {
 resource "aws_db_subnet_group" "db_subnet" {
   name = "rancher-dbs"
   description = "VPC DB subnet group for Rancher"
-  subnet_ids = ["${var.vpc_subnet_ids}"]
+  subnet_ids = ["${var.vpc_subnet_id}"]
 }

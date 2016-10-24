@@ -1,64 +1,15 @@
-/*variable "rancher_security_groups_ids" {
-  type = "list"
-  description = "Security Groups to apply to Rancher agent machines"
-}*/
-
-variable "rancher_host_url" {
-  description = "Rancher Server URL"
-}
-
-variable "rancher_host_token" {
-  description = "Rancher agent environment token"
-}
-
-variable "vpc_id" {
-  description = "VPC ID to add resources in"
-}
-
-variable "vpc_cidr_block" {
-  description = "The CIDR block of the VPC"
-}
-
-variable "subnet_ids" {
-  type = "list"
-  description = "The subnets to launch Rancher agents in"
-}
-
-variable "rancher_asg_min_size" {
-  description = "The Rancher auto scaling group minimal size"
-  default = 1
-}
-
-variable "rancher_asg_max_size" {
-  description = "The Rancher auto scaling group minimal size"
-  default = 4
-}
-
-variable "rancher_asg_desired_capacity" {
-  description = "The Rancher auto scaling group minimal size"
-  default = 1
-}
-
-variable "rancher_key_name" {
-  description = "The Rancher auto scaling group minimal size"
-}
-
-variable "ami" {
-  default = "ami-2d39803a"
-}
-
 resource "aws_launch_configuration" "rancher" {
   image_id = "${var.ami}"
   instance_type = "m4.large"
   key_name = "${var.rancher_key_name}"
   iam_instance_profile = "rancher-profile"
   security_groups = [
-    "${aws_security_group.rancher.id}"
+    "${aws_security_group.rancher.id}",
+    "${var.security_groups}"
   ]
   associate_public_ip_address = true
   ebs_optimized = true
-  ebs_block_device {
-    device_name = "sdf"
+  root_block_device {
     volume_type = "gp2"
     volume_size = "32"
     delete_on_termination = true
@@ -67,8 +18,6 @@ resource "aws_launch_configuration" "rancher" {
 #cloud-config
 packages:
   - ntp
-  - linux-image-extra-virtual
-  - linux-image-extra-3.13.0-67-generic
 write_files:
   - path: /opt/docker/install.sh
     permissions: "0755"
@@ -79,6 +28,7 @@ write_files:
       mkdir -p /etc/apt/sources.list.d/
       echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" > /etc/apt/sources.list.d/docker.list
       apt-get update
+      apt-get install -y linux-image-extra-virtual linux-image-extra-$(uname -r)
       apt-get install -y docker-engine=$DOCKER_VERSION
 runcmd:
   - [ cloud-init-per, once, docker, /opt/docker/install.sh, 1.11.2-0~trusty ]
@@ -100,6 +50,11 @@ resource "aws_autoscaling_group" "rancher" {
   vpc_zone_identifier = [
     "${var.subnet_ids}"
   ]
+  tag {
+    key = "Name"
+    value = "rancher-agent"
+    propagate_at_launch = true
+  }
 }
 
 resource "aws_security_group" "rancher" {
