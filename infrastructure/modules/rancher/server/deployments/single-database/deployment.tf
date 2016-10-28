@@ -14,8 +14,8 @@ module "config" {
   db_schema = "${var.db_schema}"
   db_username = "${var.db_username}"
   db_password = "${var.db_password}"
-  db_url = "${var.db_url}"
-  db_port = "${var.db_port}"
+  db_url = "${module.db.rds_instance_endpoint}"
+  db_port = "${module.db.rds_instance_port}"
 }
 
 module "server" {
@@ -26,6 +26,7 @@ module "server" {
   ami_id = "${var.ami_id}"
   vpc_id = "${var.vpc_id}"
   subnet_id = "${var.subnet_id}"
+  
   
   // Optional
   
@@ -40,4 +41,21 @@ module "server" {
   has_public_ip = "${var.has_public_ip}"
   root_volume_size = "${var.root_volume_size}"
   port = "${var.port}"
+}
+
+module "db" {
+  source = "../../../../app/db"
+  
+  rds_instance_name = "rancher-${var.stack}-d0${var.environment}"
+  rds_allocated_storage = "5"
+  rds_instance_class = "db.t2.small"
+  database_name = "${var.db_schema}"
+  database_user = "${var.db_username}"
+  database_password = "${var.db_password}"
+  rds_security_group_ids = [
+    "${var.db_security_group_ids}"
+  ]
+  rds_subnets = [
+    "${var.db_subnet_ids}"
+  ]
 }

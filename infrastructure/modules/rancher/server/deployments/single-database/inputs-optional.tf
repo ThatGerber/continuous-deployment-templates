@@ -65,3 +65,23 @@ variable "port" {
   description = "The port Rancher is exposed on. Needs to match that in the configuration"
   default = "8080"
 }
+
+// DB Settings
+variable "db_schema" {
+  description = "The database schema for Rancher tables"
+  default = "rancher"
+}
+
+variable "db_username" {
+  description = "The username to access the database"
+  default = "rancher"
+}
+
+variable "db_url" {
+  description = "The URL for the database"
+}
+
+variable "db_port" {
+  description = "The database connection port"
+  default = "3306"
+}

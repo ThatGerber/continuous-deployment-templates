@@ -8,6 +8,14 @@ output "rds_instance_address" {
     value = "${aws_db_instance.main_rds_instance.address}"
 }
 
+output "rds_instance_endpoint" {
+  value = "${aws_db_instance.main_rds_instance.endpoint}"
+}
+
+output "rds_instance_port" {
+  value = "${aws_db_instance.main_rds_instance.port}"
+}
+
 // Output the ID of the Subnet Group
 output "subnet_group_id" {
     value = "${aws_db_subnet_group.main_db_subnet_group.id}"
