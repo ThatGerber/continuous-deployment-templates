@@ -1,6 +1,6 @@
 module "config" {
   source = "../../components/config_embedded"
-  environment = "${var.enviornment}"
+  environment = "${var.environment}"
   stack = "${var.stack}"
   
   image = "${var.image}"
@@ -20,7 +20,7 @@ module "server" {
   
   // Optional
   
-  environment = "${var.enviornment}"
+  environment = "${var.environment}"
   stack = "${var.stack}"
   
   key_name = "${var.key_name}"

@@ -22,5 +22,10 @@ variable "port" {
 
 variable "docker_version" {
   description = "The version of Docker to install on the host"
-  default = "1.11.2-0~trusty"
+  default = "1.11.2-0"
+}
+
+variable "ubuntu_version" {
+  description = "The version of Ubunut to install"
+  default = "xenial"
 }

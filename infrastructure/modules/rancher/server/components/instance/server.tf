@@ -7,7 +7,7 @@ resource "aws_instance" "server" {
     "${var.security_group_ids}"
   ]
   subnet_id = "${var.subnet_id}"
-  associate_public_ip_address = "${var.has_public_id}"
+  associate_public_ip_address = "${var.has_public_ip}"
   user_data = "${var.config}"
   iam_instance_profile = "${var.instance_profile}"
   root_block_device {
@@ -39,6 +39,14 @@ resource "aws_security_group" "rancher" {
     protocol = "tcp"
     cidr_blocks = [
       "${var.access_cidr}"
+    ]
+  }
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = -1
+    cidr_blocks = [
+      "0.0.0.0/0"
     ]
   }
 }

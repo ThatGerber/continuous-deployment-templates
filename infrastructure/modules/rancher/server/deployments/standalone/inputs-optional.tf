@@ -23,7 +23,12 @@ variable "port" {
 
 variable "docker_version" {
   description = "The version of Docker to install on the host"
-  default = "1.11.2-0~trusty"
+  default = "1.11.2-0"
+}
+
+variable "ubuntu_version" {
+  description = "The version of Ubunut to install"
+  default = "xenial"
 }
 
 // Server Settings
@@ -59,9 +64,4 @@ variable "has_public_ip" {
 
 variable "root_volume_size" {
   default = "32"
-}
-
-variable "port" {
-  description = "The port Rancher is exposed on. Needs to match that in the configuration"
-  default = "8080"
 }

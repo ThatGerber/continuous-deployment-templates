@@ -9,7 +9,7 @@ write_files:
       DOCKER_VERSION=$1
       apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
       mkdir -p /etc/apt/sources.list.d/
-      echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" > /etc/apt/sources.list.d/docker.list
+      echo "deb https://apt.dockerproject.org/repo ubuntu-${ubuntu_version} main" > /etc/apt/sources.list.d/docker.list
       apt-get update
       apt-get install -y linux-image-extra-virtual linux-image-extra-$(uname -r) docker-engine=$DOCKER_VERSION
 
@@ -46,12 +46,12 @@ write_files:
       fi
 
       docker rm -fv rancher-server >/dev/null 2>&1 || true
-      ID=`docker run --restart=unless-stopped -d -p ${var.port}:8080 --name rancher-server --env-file /var/lib/rancher/etc/server.conf $IMAGE`
+      ID=`docker run --restart=unless-stopped -d -p ${port}:8080 --name rancher-server --env-file /var/lib/rancher/etc/server.conf $IMAGE`
 
       echo Started container rancher $ID
       echo Run the below to see the logs
       echo
-      echo docker logs -f rancher
+      echo docker logs -f rancher-server
       EOF
 
       chmod +x /var/lib/rancher/bin/rancher-start.sh
@@ -61,5 +61,5 @@ write_files:
       exec /var/lib/rancher/bin/rancher-start.sh $IMAGE
 
 runcmd:
-  - [ cloud-init-per, once, docker, /opt/docker/install.sh, "${docker_version}" ]
+  - [ cloud-init-per, once, docker, /opt/docker/install.sh, "${docker_version}~${ubuntu_version}" ]
   - [ cloud-init-per, once, rancher, /opt/rancher/rancher.sh, "${image}" ]
