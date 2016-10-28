@@ -1,8 +1,6 @@
 #cloud-config
 packages:
   - ntp
-  - linux-image-extra-virtual
-  - linux-image-extra-3.13.0-67-generic
 write_files:
   - path: /opt/docker/install.sh
     permissions: "0755"
@@ -13,7 +11,7 @@ write_files:
       mkdir -p /etc/apt/sources.list.d/
       echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" > /etc/apt/sources.list.d/docker.list
       apt-get update
-      apt-get install -y docker-engine=$DOCKER_VERSION
+      apt-get install -y linux-image-extra-virtual linux-image-extra-$(uname -r) docker-engine=$DOCKER_VERSION
 
   - path: /opt/rancher/rancher.sh
     permissions: "0755"
@@ -34,11 +32,11 @@ write_files:
       echo Creating /var/lib/rancher/etc/server.conf
       cat > /var/lib/rancher/etc/server.conf << EOF
 
-      export CATTLE_DB_CATTLE_MYSQL_HOST=${rdsUrl}
-      export CATTLE_DB_CATTLE_MYSQL_PORT=3306
-      export CATTLE_DB_CATTLE_MYSQL_NAME=rancher
-      export CATTLE_DB_CATTLE_USERNAME=biroot
-      export CATTLE_DB_CATTLE_PASSWORD=${rdsPass}
+      CATTLE_DB_CATTLE_MYSQL_HOST=${db_url}
+      CATTLE_DB_CATTLE_MYSQL_PORT=${db_port}
+      CATTLE_DB_CATTLE_MYSQL_NAME=${db_schema}
+      CATTLE_DB_CATTLE_USERNAME=${db_username}
+      CATTLE_DB_CATTLE_PASSWORD=${db_password}
 
       EOF
 
@@ -54,7 +52,7 @@ write_files:
       fi
 
       docker rm -fv rancher-server >/dev/null 2>&1 || true
-      ID=`docker run --restart=always -d -v /var/run/docker.sock:/var/run/docker.sock --name rancher-server --net host --privileged -v /var/lib/rancher/etc:/var/lib/rancher/etc $IMAGE`
+      ID=`docker run --restart=unless-stopped -d -p ${var.port}:8080 --name rancher-server --env-file /var/lib/rancher/etc/server.conf $IMAGE`
 
       echo Started container rancher $ID
       echo Run the below to see the logs
@@ -69,5 +67,5 @@ write_files:
       exec /var/lib/rancher/bin/rancher-start.sh $IMAGE
 
 runcmd:
-  - [ cloud-init-per, once, docker, /opt/docker/install.sh, 1.11.2-0~trusty ]
+  - [ cloud-init-per, once, docker, /opt/docker/install.sh, "${docker_version}" ]
   - [ cloud-init-per, once, rancher, /opt/rancher/rancher.sh, "${image}" ]
