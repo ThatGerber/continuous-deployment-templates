@@ -3,108 +3,84 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"html/template"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/objectpartners/continuous-deployment-templates/templates"
+	_ "github.com/objectpartners/continuous-deployment-templates/templates/all"
 )
 
+var defaultInputs = []*templates.UserInput{
+	&templates.UserInput{
+		Name:        "region",
+		Default:     "us-west-2",
+		Description: "AWS Region",
+	},
+	&templates.UserInput{
+		Name:        "profile",
+		Description: "AWS Credential Profile",
+	},
+	&templates.UserInput{
+		Name:        "sshPublicKeyPath",
+		Default:     "~/.ssh/id_rsa.pub",
+		Description: "SSH Public Key Path",
+	},
+	&templates.UserInput{
+		Name:        "environment",
+		Default:     "tools",
+		Description: "Environment Name",
+	},
+	&templates.UserInput{
+		Name:        "stack",
+		Default:     "server",
+		Description: "Stack Name",
+	},
+	&templates.UserInput{
+		Name:        "networkCidr",
+		Default:     "10.0.0.0/16",
+		Description: "Network CIDR",
+	},
+	&templates.UserInput{
+		Name:        "numPublicSubnets",
+		Default:     "3",
+		Description: "Number of public subnets",
+	},
+	&templates.UserInput{
+		Name:        "numPrivateSubnets",
+		Default:     "3",
+		Description: "Number of private subnets",
+	},
+}
+
 func main() {
-	templates := loadTemplates()
-	for i, template := range templates {
-		fmt.Printf("%d: %s\n", i, template)
+	templateNames := []string{}
+	for key := range templates.Templates {
+		templateNames = append(templateNames, key)
+	}
+
+	for i, t := range templateNames {
+		fmt.Printf("%d: %s\n", i, t)
 	}
 	fmt.Print("Select template to render: ")
-	selected := selectTemplate(len(templates))
+	selected := selectTemplate(len(templates.Templates))
 
-	templateDir := "templates/" + templates[selected]
-	sourceFiles, err := ioutil.ReadDir(templateDir)
-	check(err)
+	t := templates.Templates[templateNames[selected]]
 
-	inputs := []*UserInput{
-		&UserInput{
-			Name:        "region",
-			Default:     "us-west-2",
-			Description: "AWS Region",
-		},
-		&UserInput{
-			Name:        "profile",
-			Description: "AWS Credential Profile",
-		},
-		&UserInput{
-			Name:        "sshPublicKeyPath",
-			Default:     "~/.ssh/id_rsa.pub",
-			Description: "SSH Public Key Path",
-		},
-		&UserInput{
-			Name:        "environment",
-			Default:     "tools",
-			Description: "Environment Name",
-		},
-		&UserInput{
-			Name:        "stack",
-			Default:     "server",
-			Description: "Stack Name",
-		},
-		&UserInput{
-			Name:        "networkCidr",
-			Default:     "10.0.0.0/16",
-			Description: "Network CIDR",
-		},
-		&UserInput{
-			Name:        "numPublicSubnets",
-			Default:     "3",
-			Description: "Number of public subnets",
-		},
-		&UserInput{
-			Name:        "numPrivateSubnets",
-			Default:     "3",
-			Description: "Number of private subnets",
-		},
-	}
+	inputs := gatherInputs(defaultInputs, t.Inputs)
+
+	t.TemplateFiles(inputs)
+}
+
+func gatherInputs(global, template []*templates.UserInput) map[string]string {
 	variables := make(map[string]string)
-	for _, input := range inputs {
+	for _, input := range global {
 		promptForInput(variables, input)
 	}
-	templateFiles(templateDir, sourceFiles, variables)
-}
-
-func templateFiles(templateDir string, files []os.FileInfo, vars map[string]string) {
-	t := template.New("infrastructure")
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		fmt.Println("Name: " + file.Name())
-		data, err := ioutil.ReadFile(templateDir + "/" + file.Name())
-		check(err)
-		dest, err := os.Create(file.Name())
-		check(err)
-		tmpl, err := t.Parse(string(data))
-		check(err)
-		err = tmpl.Execute(dest, &Input{
-			Variables: vars,
-		})
-		check(err)
+	for _, input := range template {
+		promptForInput(variables, input)
 	}
-}
-
-func check(err error) {
-	if err != nil {
-		os.Exit(1)
-	}
-}
-
-func loadTemplates() []string {
-	var templates []string
-	files, _ := ioutil.ReadDir("templates")
-	for _, file := range files {
-		if file.IsDir() {
-			templates = append(templates, file.Name())
-		}
-	}
-	return templates
+	return variables
 }
 
 func selectTemplate(max int) int {
@@ -116,7 +92,10 @@ func selectTemplate(max int) int {
 		return selectTemplate(max)
 	}
 	val, err := strconv.Atoi(response)
-	check(err)
+	if err != nil {
+		fmt.Println("Invalid input")
+		return selectTemplate(max)
+	}
 	if val >= max {
 		fmt.Println("Invalid selection")
 		return selectTemplate(max)
@@ -124,7 +103,7 @@ func selectTemplate(max int) int {
 	return val
 }
 
-func promptForInput(data map[string]string, input *UserInput) {
+func promptForInput(data map[string]string, input *templates.UserInput) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Printf("%s [%s]: ", input.Description, input.Default)
 	response, _ := reader.ReadString('\n')
@@ -137,14 +116,4 @@ func promptForInput(data map[string]string, input *UserInput) {
 		fmt.Println("Must provide a value")
 		promptForInput(data, input)
 	}
-}
-
-type UserInput struct {
-	Name        string
-	Default     string
-	Description string
-}
-
-type Input struct {
-	Variables map[string]string
 }
