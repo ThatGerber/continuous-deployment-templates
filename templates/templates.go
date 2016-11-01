@@ -3,7 +3,6 @@ package templates
 import (
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"os"
 )
 
@@ -18,35 +17,32 @@ func Add(template *Template) {
 type Template struct {
 	Name   string
 	Inputs []*UserInput
-	Files  TemplateFiles
+	Files  []*TemplateFile
 }
 
-type TemplateFiles func() []*os.File
+type TemplateFile struct {
+	Name     string
+	Template string
+}
 
 func (t *Template) TemplateFiles(inputs map[string]string) error {
 	engine := template.New("infrastructure")
-	for _, file := range t.Files() {
-		fmt.Println("Name: " + file.Name())
-		data, err := ioutil.ReadAll(file)
+	for _, file := range t.Files {
+		dest, err := os.Create(file.Name)
 		if err != nil {
-			fmt.Println("Error reading: " + file.Name())
+			fmt.Println("Error creating output file: " + file.Name)
 			os.Exit(1)
 		}
-		dest, err := os.Create(file.Name())
+		tmpl, err := engine.Parse(file.Template)
 		if err != nil {
-			fmt.Println("Error creating output file: " + file.Name())
-			os.Exit(1)
-		}
-		tmpl, err := engine.Parse(string(data))
-		if err != nil {
-			fmt.Println("Error parsing data from: " + file.Name())
+			fmt.Println("Error parsing data from: " + file.Name)
 			os.Exit(1)
 		}
 		err = tmpl.Execute(dest, &Input{
 			Variables: inputs,
 		})
 		if err != nil {
-			fmt.Println("Error executing templating file: " + file.Name())
+			fmt.Println("Error executing templating file: " + file.Name)
 			os.Exit(1)
 		}
 	}
