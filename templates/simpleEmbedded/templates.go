@@ -1,7 +1,9 @@
 package simpleEmbedded
 
+import "github.com/objectpartners/continuous-deployment-templates/templates"
+
 const (
-deploymentTf = `variable "region" {}
+	deploymentTf = `variable "region" {}
 
 variable "profile" {}
 
@@ -67,7 +69,8 @@ output "url" {
   value = "${module.rancher.rancher_server_url}"
 }
 `
-variablesTfvars = `region              = "{{.Variables.region}}"
+
+	variablesTfvars = `region              = "{{.Variables.region}}"
 profile             = "{{.Variables.profile}}"
 ssh_public_key_path = "{{.Variables.sshPublicKeyPath}}"
 environment         = "{{.Variables.environment}}"
@@ -75,3 +78,14 @@ stack               = "{{.Variables.stack}}"
 network_cidr        = "{{.Variables.networkCidr}}"
 `
 )
+
+var templateFiles = []*templates.TemplateFile{
+	&templates.TemplateFile{
+		Name:     "deployment.tf",
+		Template: deploymentTf,
+	},
+	&templates.TemplateFile{
+		Name:     "variables.tfvars",
+		Template: variablesTfvars,
+	},
+}
