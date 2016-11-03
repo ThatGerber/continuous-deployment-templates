@@ -77,8 +77,8 @@ environment         = "{{.Variables.environment}}"
 stack               = "{{.Variables.stack}}"
 network_cidr        = "{{.Variables.networkCidr}}"
 `
-)
 
+)
 var templateFiles = []*templates.TemplateFile{
 	&templates.TemplateFile{
 		Name:     "deployment.tf",
