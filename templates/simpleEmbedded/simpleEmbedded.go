@@ -6,10 +6,12 @@ import (
 
 //go:generate go run ../../scripts/templates.go
 
+var template = &templates.Template{
+	Name:   "simpleEmbedded",
+	Inputs: []*templates.UserInput{},
+	Files:  templateFiles,
+}
+
 func init() {
-	templates.Add(&templates.Template{
-		Name:   "simpleEmbedded",
-		Inputs: []*templates.UserInput{},
-		Files:  templateFiles,
-	})
+	templates.Add(template)
 }
