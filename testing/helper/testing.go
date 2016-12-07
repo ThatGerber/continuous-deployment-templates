@@ -70,6 +70,7 @@ func (tc *TestCase) validateInput() error {
 }
 
 func (tc *TestCase) generate() error {
+	tc.Inputs["moduleSource"] = "../../"
 	err := tc.Template.TemplateFiles(tc.dir, tc.Inputs)
 	if err != nil {
 		return err

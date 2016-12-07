@@ -57,7 +57,7 @@ module "network" {
 }
 
 module "rancher" {
-  source    = "../../infrastructure/modules/rancher/server/deployments/standalone"
+  source    = "${var.module_source}/infrastructure/modules/rancher/server/deployments/standalone"
   vpc_id    = "${module.network.vpc_id}"
   subnet_id = "${module.network.public_subnets[0]}"
   ami_id    = "${data.aws_ami.ubuntu.id}"
@@ -70,7 +70,7 @@ output "url" {
 }
 `
 
-	variablesTfvars = `region              = "{{.Variables.region}}"
+	terraformTfvars = `region              = "{{.Variables.region}}"
 profile             = "{{.Variables.profile}}"
 ssh_public_key_path = "{{.Variables.sshPublicKeyPath}}"
 environment         = "{{.Variables.environment}}"
@@ -85,7 +85,7 @@ var templateFiles = []*templates.TemplateFile{
 		Template: deploymentTf,
 	},
 	&templates.TemplateFile{
-		Name:     "variables.tfvars",
-		Template: variablesTfvars,
+		Name:     "terraform.tfvars",
+		Template: terraformTfvars,
 	},
 }

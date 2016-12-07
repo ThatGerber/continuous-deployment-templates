@@ -52,6 +52,11 @@ var defaultInputs = []*UserInput{
 		Default:     "3",
 		Description: "Number of private subnets",
 	},
+	&UserInput{
+		Name:        "moduleSource",
+		Default:     "github.com/objectpartners/continuous-deployment-templates",
+		Description: "Location of module templates",
+	},
 }
 
 // Add adds an available template
