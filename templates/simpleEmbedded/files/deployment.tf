@@ -21,6 +21,7 @@ variable "network_cidr" {
 provider "aws" {
   region  = "${var.region}"
   profile = "${var.profile}"
+  allowed_account_ids = ["${var.aws_account_id}"]
 }
 
 data "aws_availability_zones" "available" {}
@@ -30,8 +31,15 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-trusty-16.04-amd64-server-*"]
   }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["099720109477"] # Canonical
 }
 
 resource "aws_key_pair" "test" {

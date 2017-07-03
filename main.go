@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/objectpartners/continuous-deployment-templates/templates"
-	_ "github.com/objectpartners/continuous-deployment-templates/templates/all"
+	"github.com/objectpartners/continuous-deployment-templates/src/templates"
+	_ "github.com/objectpartners/continuous-deployment-templates/src/templates/all"
 )
 
 func main() {
