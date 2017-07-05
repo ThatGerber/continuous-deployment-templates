@@ -8,16 +8,12 @@ var template = &templates.Template{
 	Name: "ciServer",
 	Files: []*templates.TemplateFile{
 		{
-			Name:     "development.tf",
-			Template: "templates/devops_vpc.tf",
+			Name:     "config.tf",
+			Template: "templates/config.tf",
 		},
 		{
-			Name:     "staging.tf",
-			Template: "templates/stage_vpc.tf",
-		},
-		{
-			Name:     "production.tf",
-			Template: "templates/prod_vpc.tf",
+			Name:     "ci_server.tf",
+			Template: "templates/ci_server.tf",
 		},
 	},
 	Inputs: []*templates.UserInput{},
@@ -27,14 +23,22 @@ var template = &templates.Template{
 			Description: "Environment Name (alnum only)",
 		},
 		{
+			Name:        "awsRegion",
+			Description: "AWS Region",
+		},
+		{
+			Name:        "awsProfile",
+			Description: "AWS IAM Profile",
+		},
+		{
 			Name:        "networkCidr",
-			Default:     "10.0",
-			Description: "First two bytes of CIDR",
+			Default:     "10.0.0.0/16",
+			Description: "CIDR of CI Server's Network",
 		},
 		{
 			Name:        "ciType",
 			Default:     "jenkins",
-			Description: "Which CI server would you like to use? [Jenkins, Drone, Concourse]",
+			Description: "Which CI server would you like to use? [jenkins, drone, concourse]",
 		},
 		{
 			Name:        "moduleSource",

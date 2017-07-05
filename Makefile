@@ -7,7 +7,7 @@ TARGET = generate
 
 # Source Folder
 SOURCEDIR = src
-SRCS := main.go
+SRCS := $(SOURCEDIR)/main.go
 SRCS += $(shell find $(SOURCEDIR) -name '*.go')
 SRCS += $(shell find $(SOURCEDIR) -name '*.tf')
 SRCS += $(shell find $(SOURCEDIR) -name '*.tfvars')
@@ -20,13 +20,9 @@ SRCS += $(shell find $(TMPLDIR) -name '*.tf')
 SRCS += $(shell find $(TMPLDIR) -name '*.tfvars')
 SRCS += $(shell find $(TMPLDIR) -name '*.json')
 
-CLEAN_TARGETS = $(TARGET)
+CLEAN_TARGETS = $(TARGET) $(GOBIN)/$(TARGET)
 
-SANDBOX_DIR = sandbox
-
-CLEAN_TARGETS += $(SANDBOX_DIR)
-
-GO := go
+GO = go
 GOFLAGS =
 
 # $(call go,cmd)
@@ -34,19 +30,19 @@ define go
 	$(GO) $(1) $(GOFLAGS) $(2)
 endef
 
-.PHONY: all clean fmt run
+.PHONY: all clean fmt install run test
 
-all : $(SANDBOX_DIR)/$(TARGET)
+all : $(TARGET)
 
-$(SANDBOX_DIR)/$(TARGET) : $(SANDBOX_DIR) $(TARGET)
-	cp $(TARGET) $@
-
-$(TARGET) : GOFLAGS = -o $(TARGET)
+$(TARGET) : GOFLAGS = -x -o $(TARGET)
 $(TARGET) : $(SRCS)
 	$(call go,build,$<)
 
-$(SANDBOX_DIR) :
-	mkdir -p $@
+install : GOFLAGS = -x -i -o $(GOBIN)/$(TARGET)
+install : $(SRCS)
+	$(info Removing local binary $(TARGET))
+	rm -f $(TARGET)
+	$(call go,build,$<)
 
 clean: $(CLEAN_TARGETS)
 	rm -rf $^
@@ -55,7 +51,7 @@ fmt : $(SRCS)
 	@gofmt -w -s .
 
 run : $(SRCS)
-	$(call go,run,$<)
+	$(call go,$@,$<)
 
 test : $(SRCS)
-	$(call go,test,.../.)
+	$(call go,$@,.../.)
