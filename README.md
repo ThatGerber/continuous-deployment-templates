@@ -4,19 +4,17 @@ Template, modules, etc for doing demos/hacks for CD
 
 ---
 
-[Guide][wiki/README.md]
-
+[Guide](wiki/README.md)
 
 ## Project Structure
 
 ```
-# Terraform Config. Modules used to make environments
+# Terraform Templates. Modules used to make environments
 ├── infrastructure
 │   └── modules
 
 # generate: Source library
 ├── src
-│   ├── all
 │   └── templates
 
 # Templates for generate terraform files.
@@ -38,3 +36,5 @@ Template, modules, etc for doing demos/hacks for CD
 ```
 
 ### Generate
+
+Generates Terraform configurations using input from a series of prompts.

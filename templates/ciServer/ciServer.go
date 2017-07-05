@@ -25,6 +25,7 @@ var template = &templates.Template{
 		{
 			Name:        "awsRegion",
 			Description: "AWS Region",
+			Default:     "us-west-2",
 		},
 		{
 			Name:        "awsProfile",
@@ -34,6 +35,20 @@ var template = &templates.Template{
 			Name:        "networkCidr",
 			Default:     "10.0.0.0/16",
 			Description: "CIDR of CI Server's Network",
+		},
+		{
+			Name:        "tfBackend",
+			Default:     "local",
+			Description: "Type of Terraform Backend to Initiate. [local, s3]",
+		},
+		{
+			Name:        "tfStateBucket",
+			Description: "Name of Terraform State Bucket and Key",
+		},
+		{
+			Name:        "tfStateRegion",
+			Default:     "us-west-2",
+			Description: "Region to place Terraform State Bucket",
 		},
 		{
 			Name:        "ciType",

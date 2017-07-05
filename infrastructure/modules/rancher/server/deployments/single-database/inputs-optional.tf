@@ -2,79 +2,74 @@
 
 variable "environment" {
   description = "The environment (devPhase) to name this instance. Part of the Netflix Frigga naming pattern"
-  default = "tools"
+  default     = "tools"
 }
 
 variable "stack" {
   description = "The stack name for this instance. Part of the Netflix Frigga naming pattern"
-  default = "server"
+  default     = "server"
 }
 
 // Config Settings
 variable "image" {
   description = "The docker image containing the Rancher server application"
-  default = "rancher/server:latest"
+  default     = "rancher/server:latest"
 }
 
 variable "port" {
-  description = "The port to expose Rancher on"
-  default = "8080"
+  description = "The port Rancher is exposed on. Needs to match that in the configuration"
+  default     = "8080"
 }
 
 variable "docker_version" {
   description = "The version of Docker to install on the host"
-  default = "1.11.2-0~trusty"
+  default     = "1.11.2-0~trusty"
 }
 
 // Server Settings
 
 variable "key_name" {
   description = "The EC2 KeyPair to associate to the instance"
-  default = ""
+  default     = ""
 }
 
 variable "instance_profile" {
-  description = "The EC2 IAM Instance Profile to associate to instane"
-  default = ""
+  description = "The EC2 IAM Instance Profile to associate to instance"
+  default     = ""
 }
 
 variable "instance_type" {
   description = "The EC2 Instance Type to launch"
-  default = "t2.micro"
+  default     = "t2.micro"
 }
 
 variable "access_cidr" {
   description = "The default allowable IPs to allow access (SSH, WEB)"
-  default = "0.0.0.0/0"
+  default     = "0.0.0.0/0"
 }
 
 variable "security_group_ids" {
-  type = "list"
+  type    = "list"
   default = []
 }
 
 variable "has_public_ip" {
-  default = "true"
+  default = true
 }
 
 variable "root_volume_size" {
   default = "32"
 }
 
-variable "port" {
-  description = "The port Rancher is exposed on. Needs to match that in the configuration"
-  default = "8080"
-}
-
 // DB Settings
 variable "db_schema" {
   description = "The database schema for Rancher tables"
-  default = "rancher"
+  default     = "rancher"
 }
 
 variable "db_username" {
   description = "The username to access the database"
-  default = "rancher"
+  default     = "rancher"
 }
 
 variable "db_url" {
@@ -83,5 +78,5 @@ variable "db_url" {
 
 variable "db_port" {
   description = "The database connection port"
-  default = "3306"
+  default     = "3306"
 }
