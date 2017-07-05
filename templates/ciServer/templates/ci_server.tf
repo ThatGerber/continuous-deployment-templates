@@ -2,18 +2,16 @@
 terraform {
   required_version = "< 0.9"
 
-{{if eq .Variables.tfBackend s3}}
+{{if (eq .Variables.tfBackend "s3")}}
   backend "s3" {
     bucket = "{{.Variables.tfStateBucket}}"
     key    = "infrastructure/terraform.tfstate"
     region = "{{.Variables.tfStateRegion}}"
-  }
-{{else}}
+  }{{else}}
   backend "local" {
     # Will need to be configured for S3.
     path = ".terraform/terraform.tfstate"
-  }
-{{end}}
+  }{{end}}
 }
 
 # AWS provider

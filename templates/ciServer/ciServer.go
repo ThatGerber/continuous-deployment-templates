@@ -15,6 +15,10 @@ var template = &templates.Template{
 			Name:     "ci_server.tf",
 			Template: "templates/ci_server.tf",
 		},
+		{
+			Name:     "Makefile",
+			Template: "templates/Makefile",
+		},
 	},
 	Inputs: []*templates.UserInput{},
 	DefaultInputs: []*templates.UserInput{
