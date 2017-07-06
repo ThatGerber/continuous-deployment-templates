@@ -26,12 +26,12 @@ provider "aws" {
 
 data "aws_availability_zones" "available" {}
 
-data "aws_ami" "ubuntu" {
+data "aws_ami" "ubuntu_xenial" {
   most_recent = true
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-trusty-16.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*"]
   }
 
   filter {
@@ -60,10 +60,10 @@ module "network" {
 }
 
 module "rancher" {
-  source    = "${var.module_source}/infrastructure/modules/rancher/server/deployments/standalone"
+  source    = "{{.Variables.moduleSource}}/infrastructure/modules/rancher/server/deployments/standalone"
   vpc_id    = "${module.network.vpc_id}"
   subnet_id = "${module.network.public_subnets[0]}"
-  ami_id    = "${data.aws_ami.ubuntu.id}"
+  ami_id    = "${data.aws_ami.ubuntu_xenial.image_id}"
 
   key_name = "${aws_key_pair.test.key_name}"
 }

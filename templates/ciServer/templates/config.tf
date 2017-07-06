@@ -1,9 +1,3 @@
-
-variable "module_source" {
-  description "Module Source"
-  default = "{{.Variables.moduleSource}}/infrastructure/modules/vpc"
-}
-
 variable "environment" {
   description "Name of Environment"
   default = "{{.Variables.environment}}"

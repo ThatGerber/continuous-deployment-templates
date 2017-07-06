@@ -11,6 +11,7 @@ TF_DIR    = .terraform
 IGNORE_INIT   = true
 STATE_FILE    = $(TF_DIR)/terraform.tfstate
 TF_MODULE_DIR = $(TF_DIR)/modules
+PLANTIMESTAMP = $(TF_DIR)/.tfplan
 SRCS += $(shell find $(SOURCEDIR) -name '*.tf')
 SRCS += $(shell find $(SOURCEDIR) -name '*.tfvars')
 SRCS += $(shell find $(SOURCEDIR) -name '*.json')
@@ -44,11 +45,12 @@ clean : $(CLEAN_TARGETS)
 
 ## plan     : Generate terraform plan. Same as `default`
 plan : $(STATE_FILE)
+	touch $(PLANTIMESTAMP)
 
 define tf-apply
 @ERROR=; \
 for f in $^; do \
-	if [ $$f -nt $(STATE_FILE) ]; then \
+	if [ $$f -nt $(PLANTIMESTAMP) ]; then \
 		ERROR=true; \
 		echo 'A source file has changed since last plan. Not applying'; \
 	fi \
@@ -56,7 +58,7 @@ done;
 test -z $$ERROR && $(call tf,apply)
 endef
 
-## apply    : Apply plan file.
+## apply    : Apply plan file. Will fail if files have changed since the plan.
 apply : $(SRCS)
 	$(call tf-apply)
 
