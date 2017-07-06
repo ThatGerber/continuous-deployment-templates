@@ -44,8 +44,8 @@ install : $(SRCS)
 	rm -f $(TARGET)
 	$(call go,build,$<)
 
-clean: $(CLEAN_TARGETS)
-	rm -rf $^
+clean:
+	rm -rf $(CLEAN_TARGETS)
 
 fmt : $(SRCS)
 	@gofmt -w -s .

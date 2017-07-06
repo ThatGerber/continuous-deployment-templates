@@ -13,7 +13,7 @@ write_files:
       apt-get update
       PACKAGES="docker-engine=$DOCKER_VERSION"
       if [ -n "`lsb_release -sd | grep '^Ubuntu 14\.04\.[0-9] LTS$'`" ]; then
-        PACKAGES="linux-image-extra-virtual linux-image-extra-$(uname -r) ${PACKAGES}"
+        PACKAGES="linux-image-extra-virtual linux-image-extra-$(uname -r) $PACKAGES"
       fi
       apt-get install -y $PACKAGES
 
