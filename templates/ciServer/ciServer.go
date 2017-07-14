@@ -1,6 +1,9 @@
-package simpleEmbedded
+package ciServer
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/objectpartners/continuous-deployment-templates/src/templates"
 )
 
@@ -8,16 +11,12 @@ var template = &templates.Template{
 	Name: "ciServer",
 	Files: []*templates.TemplateFile{
 		{
-			Name:     "config.tf",
-			Template: "templates/config.tf",
+			Name:     "ci_inputs.tf",
+			Template: "templates/ci_inputs.tf",
 		},
 		{
 			Name:     "ci_server.tf",
 			Template: "templates/ci_server.tf",
-		},
-		{
-			Name:     "Makefile",
-			Template: "templates/Makefile",
 		},
 	},
 	Inputs: []*templates.UserInput{},
@@ -27,32 +26,9 @@ var template = &templates.Template{
 			Description: "Environment Name (alnum only)",
 		},
 		{
-			Name:        "awsRegion",
-			Description: "AWS Region",
-			Default:     "us-west-2",
-		},
-		{
-			Name:        "awsProfile",
-			Description: "AWS IAM Profile",
-		},
-		{
 			Name:        "networkCidr",
 			Default:     "10.0.0.0/16",
 			Description: "CIDR of CI Server's Network",
-		},
-		{
-			Name:        "tfBackend",
-			Default:     "local",
-			Description: "Type of Terraform Backend to Initiate. [local, s3]",
-		},
-		{
-			Name:        "tfStateBucket",
-			Description: "Name of Terraform State Bucket and Key",
-		},
-		{
-			Name:        "tfStateRegion",
-			Default:     "us-west-2",
-			Description: "Region to place Terraform State Bucket",
 		},
 		{
 			Name:        "ciType",
@@ -69,5 +45,14 @@ var template = &templates.Template{
 
 // Adding a comment
 func init() {
+	var err error
+
+	for _, file := range template.Files {
+		file.RawBody, err = Asset(file.Template)
+
+		if err != nil {
+			log.Fatal(fmt.Sprintf("Error on template %s => %s", file.Name, err))
+		}
+	}
 	templates.Add(template)
 }

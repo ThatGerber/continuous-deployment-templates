@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform/helper/logging"
-	"github.com/objectpartners/continuous-deployment-templates/templates"
+	"github.com/objectpartners/continuous-deployment-templates/src/templates"
 )
 
 func Test(t *testing.T, spec TestCase) {

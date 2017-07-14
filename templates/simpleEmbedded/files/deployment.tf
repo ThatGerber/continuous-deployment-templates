@@ -1,28 +1,3 @@
-variable "region" {}
-
-variable "profile" {}
-
-variable "ssh_public_key_path" {
-  default = "~/.ssh/id_rsa.pub"
-}
-
-variable "environment" {
-  default = "tools"
-}
-
-variable "stack" {
-  default = "server"
-}
-
-variable "network_cidr" {
-  default = "10.0.0.0/16"
-}
-
-provider "aws" {
-  region  = "${var.region}"
-  profile = "${var.profile}"
-  allowed_account_ids = ["${var.aws_account_id}"]
-}
 
 data "aws_availability_zones" "available" {}
 
@@ -60,14 +35,10 @@ module "network" {
 }
 
 module "rancher" {
-  source    = "{{.Variables.moduleSource}}/infrastructure/modules/rancher/server/deployments/standalone"
+  source    = "{{.Variables.moduleSource}}//infrastructure/modules/rancher/server/deployments/standalone"
   vpc_id    = "${module.network.vpc_id}"
   subnet_id = "${module.network.public_subnets[0]}"
   ami_id    = "${data.aws_ami.ubuntu_xenial.image_id}"
 
   key_name = "${aws_key_pair.test.key_name}"
-}
-
-output "url" {
-  value = "${module.rancher.rancher_server_url}"
 }

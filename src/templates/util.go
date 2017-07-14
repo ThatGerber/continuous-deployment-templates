@@ -9,11 +9,6 @@ import (
 
 // Add adds an available template
 func Add(template *Template) {
-
-	for _, tmpl := range template.Files {
-		tmpl.ConsumeTemplateFile()
-	}
-
 	Templates[template.Name] = template
 }
 

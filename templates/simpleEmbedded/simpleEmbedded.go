@@ -1,6 +1,9 @@
 package simpleEmbedded
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/objectpartners/continuous-deployment-templates/src/templates"
 )
 
@@ -19,17 +22,17 @@ var template = &templates.Template{
 	Inputs: []*templates.UserInput{},
 	DefaultInputs: []*templates.UserInput{
 		{
-			Name:        "region",
-			Default:     "us-west-2",
-			Description: "AWS Region",
-		},
-		{
 			Name:        "profile",
 			Description: "AWS Credential Profile",
 		},
 		{
-			Name:        "aws_account_id",
+			Name:        "awsAccountId",
 			Description: "AWS Account ID",
+		},
+		{
+			Name:        "region",
+			Default:     "us-west-2",
+			Description: "AWS Region",
 		},
 		{
 			Name:        "sshPublicKeyPath",
@@ -71,5 +74,14 @@ var template = &templates.Template{
 
 // Adding a comment
 func init() {
+	var err error
+
+	for _, file := range template.Files {
+		file.RawBody, err = Asset(file.Template)
+
+		if err != nil {
+			log.Fatal(fmt.Sprintf("Error on template %s => %s", file.Name, err))
+		}
+	}
 	templates.Add(template)
 }
