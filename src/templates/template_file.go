@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	ttemplate "text/template"
 	"time"
 
@@ -17,15 +16,8 @@ import (
 
 const (
 	/**
-		 * "2" refers to how many jumps back to get to the original template.Add in code
-	 	 *
-		 * Sorry, I know magic numbers suck.
-	*/
-	JUMPS = 2
-
-	/**
-	   * Time to wait while generating HCL template and getting original file. 10
-		 * seconds is probably too high, but setting it there as a sanity check.
+	 * Time to wait while generating HCL template and getting original file. 10
+	 * seconds is probably too high, but setting it there as a sanity check.
 	*/
 	FILE_LOAD_TIMEOUT = 10
 )
@@ -35,12 +27,18 @@ const (
  *
  * A template file includes:
  *
- * 1. A name for the final parsed template.
- * 2. A Template file, which is a string representing a path to a template file.
- * 3. A body, which is the content of the Template file.
- * 4. And the HCL, which is an ast representing contents of any file in the user's
- *    working directory that is named the same as the TemplateFile.Name **as well
- *		as** the contents from the generated template file.
+ * * A name for the final parsed template.
+ * * A Template file, which is a string representing a path to a template file.
+ * * A body, which is the content of the Template file.
+ * * The Raw bytes of the body. Because Go can't reference static files without
+ *   or something to parse (you can't include files in a package and then
+ *   use those files from a distributed binary), we use a separate tool to
+ *   munge the file into a dynamically generated Golang assets.go file:
+ *   `templates/**\/assets.go`
+ * * The HCL, which is a Terraform ast representing contents of any file in
+ *   the user's working directory that is named the same as the
+ *   TemplateFile.Name **as well as** the contents from the generated template
+ *   file.
  *
  * The HCL attribute needs to merge the content of the template and the original
  * file and write it out as a formatted (terraform fmt) HCL config.
@@ -53,6 +51,13 @@ type TemplateFile struct {
 	Hcl      *ast.File
 }
 
+/**
+ * TemplateFileMessenger
+ *
+ * Contains a Files attribute and an Errors attribute that hold channels. These
+ * channels manage the flow of information in and out of gofuncs related to file
+ * processing.
+ */
 type TemplateFileMessenger struct {
 	Files  chan string
 	Errors chan error
@@ -63,14 +68,6 @@ type TemplateFileMessenger struct {
  *
  * This takes a templating engine, feeds in a template file (i.e. TemplateFile)
  * and merges the result with the content of a similarly named file.
- *
- * Steps:
- *
- * 1. Get file names (to be ingested). Includes original file and interpolated
- *    template file.
- * 2. Parse template file and write out to temp file.
- * 3. Pass both files to method that ingests both into an ast.
- * 4. Merge both ast's and return err if
  */
 func (t *TemplateFile) ConsumeTemplateFile(engine *ttemplate.Template, inputs map[string]string) error {
 	var err error
@@ -219,25 +216,6 @@ func (t *TemplateFile) write(dest string) (err error) {
 	}
 
 	return nil
-}
-
-/**
- * Absolute path to the template file to be parsed by the template engine.
- */
-func (t *TemplateFile) templateAbsPath() (string, error) {
-	var tmplFile string
-
-	_, tmplFile, _, _ = runtime.Caller(JUMPS)
-	tmplDir, err := filepath.Abs(filepath.Dir(tmplFile))
-
-	if err != nil {
-
-		return tmplFile, err
-	}
-
-	tmplFile = filepath.Join(tmplDir, t.Template)
-
-	return tmplFile, nil
 }
 
 /**

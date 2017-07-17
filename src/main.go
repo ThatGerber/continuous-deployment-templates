@@ -1,90 +1,62 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
+	"sort"
 
 	"github.com/objectpartners/continuous-deployment-templates/src/templates"
 	_ "github.com/objectpartners/continuous-deployment-templates/src/templates/all"
 )
 
+/*
+Application Exit Code. Changed dynamically as the application is run depending
+on errors encountered.
+*/
+var ExitCode int = 0
+
 func main() {
+	var output string
 	var templateNames []string
 	var tmpl *templates.Template
-	var selectedTemplates []string
-	var exitCode int
+	var selected []string
 
-	exitCode = 0
+	output = `
+Select Template(s) to Generate
+
+If selecting multiple templates, separate choices with comma.
+E.g.: 0,2,3
+
+Templates
+------------------`
+	fmt.Println(output)
 
 	templateNames = templates.TemplateNames()
-
+	sort.Strings(templateNames)
 	for i, t := range templateNames {
-		fmt.Printf("%d: %s\n", i, t)
+		output = fmt.Sprintf("%d: %s", i, t)
+		fmt.Println(output)
 	}
-	fmt.Println("Select template(s) to render:")
-	fmt.Println("If selecting multiple templates, separate choices with comma.")
-	fmt.Print(": ")
 
-	selectedTemplates = selectTemplates(templateNames)
+	selected = templates.Select(templateNames)
+	sort.Strings(selected)
 
-	for _, name := range selectedTemplates {
+	for _, name := range selected {
 		tmpl = templates.Templates[name]
 
-		fmt.Println(fmt.Sprintf("Generating files for %v template.", string(tmpl.Name)))
+		output = fmt.Sprintf("Generating files for template: %s", tmpl.Name)
+		fmt.Println(output)
 
 		err := tmpl.RunTemplate()
-
 		if err != nil {
-			fmt.Print(err)
-			exitCode = 1
+			ExitCode = 1
+			output = fmt.Sprintf("Error in : %s", err)
+			fmt.Println(output)
 		}
 	}
 
-	os.Exit(exitCode)
-}
+	output = "Complete."
+	fmt.Println(output)
 
-/**
-Send user prompt for template choices. Returns a slice containing the names of
-templates to be parsed, otherwise keeps looping until it gets an acceptable
-result.
-
-User can submit choices as a single integer ("1"), or they can pass a comma-
-separated string of choices ("1,3,4") to be parsed through and created.
-*/
-func selectTemplates(tmplts []string) (selected []string) {
-	var max int
-
-	max = len(tmplts)
-
-	reader := bufio.NewReader(os.Stdin)
-	response, _ := reader.ReadString('\n')
-	response = strings.TrimSpace(response)
-
-	if response == "" {
-		fmt.Println("Must select a template")
-
-		return selectTemplates(tmplts)
-	}
-
-	for _, key := range strings.Split(response, ",") {
-
-		index, err := strconv.Atoi(strings.TrimSpace(key))
-		if err != nil {
-			fmt.Printf("Invalid input: %s\n", key)
-
-			return selectTemplates(tmplts)
-		}
-
-		if index >= max {
-			fmt.Printf("Invalid selection for key %s: %d\n", key, index)
-
-			return selectTemplates(tmplts)
-		}
-		selected = append(selected, tmplts[index])
-	}
-
-	return selected
+	os.Exit(ExitCode)
 }
