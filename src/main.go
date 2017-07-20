@@ -50,7 +50,7 @@ Templates
 		err := tmpl.Run()
 		if err != nil {
 			ExitCode = 1
-			output = fmt.Sprintf("Error in : %s", err)
+			output = fmt.Sprintf("Fatal Error:\n%s", err)
 			fmt.Println(output)
 		}
 	}

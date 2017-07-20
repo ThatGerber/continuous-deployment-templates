@@ -45,7 +45,7 @@ func (t *Template) Run() error {
 	for _, file = range t.Files {
 		err = t.Generate(file)
 		if err != nil {
-			err = fmt.Errorf("In %s: %s", file.Name, err)
+			err = fmt.Errorf("%s: %s", file.Name, err)
 			return err
 		}
 	}
@@ -120,8 +120,12 @@ func (t *Template) generateTempFile(file *TemplateFile) (string, error) {
 		err = fmt.Errorf("error creating tmp output file %s", file.Name)
 		return filename, err
 	}
-	hash := t.Inputs.Hash()
-	err = t.Engine.Execute(tmpFile, hash)
+	vars := struct {
+		Var map[string]interface{}
+	}{
+		t.Inputs.Hash(),
+	}
+	err = t.Engine.Execute(tmpFile, vars)
 	if err != nil {
 		err = fmt.Errorf("error executing templating file %s", t.Name)
 		return filename, err
