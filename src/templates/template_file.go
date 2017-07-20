@@ -6,253 +6,164 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	ttemplate "text/template"
-	"time"
 
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/hcl/hcl/printer"
 )
 
-const (
-	/**
-	 * Time to wait while generating HCL template and getting original file. 10
-	 * seconds is probably too high, but setting it there as a sanity check.
-	*/
-	FILE_LOAD_TIMEOUT = 10
-)
+/*
+The TemplateFile struct represents a single file in a template collection.
 
-/**
- * The TemplateFile struct represents a single file in a template collection.
- *
- * A template file includes:
- *
- * * A name for the final parsed template.
- * * A Template file, which is a string representing a path to a template file.
- * * A body, which is the content of the Template file.
- * * The Raw bytes of the body. Because Go can't reference static files without
- *   or something to parse (you can't include files in a package and then
- *   use those files from a distributed binary), we use a separate tool to
- *   munge the file into a dynamically generated Golang assets.go file:
- *   `templates/**\/assets.go`
- * * The HCL, which is a Terraform ast representing contents of any file in
- *   the user's working directory that is named the same as the
- *   TemplateFile.Name **as well as** the contents from the generated template
- *   file.
- *
- * The HCL attribute needs to merge the content of the template and the original
- * file and write it out as a formatted (terraform fmt) HCL config.
- */
+A template file includes:
+
+* A name for the final parsed template.
+* A Template file, which is a string representing a path to a template file.
+* A body, which is the content of the Template file.
+* The Raw bytes of the body. Because Go can't reference static files without
+  or something to parse (you can't include files in a package and then
+  use those files from a distributed binary), we use a separate tool to
+  munge the file into a dynamically generated Golang assets.go file:
+  `templates/**\/assets.go`
+* The HCL, which is a Terraform ast representing contents of any file in
+  the user's working directory that is named the same as the
+  TemplateFile.Name **as well as** the contents from the generated template
+  file.
+
+The HCL attribute needs to merge the content of the template and the original
+file and write it out as a formatted (terraform fmt) HCL config.
+*/
 type TemplateFile struct {
 	Name     string
 	Template string
 	Body     string
-	RawBody  []byte
 	Hcl      *ast.File
 }
 
-/**
- * TemplateFileMessenger
- *
- * Contains a Files attribute and an Errors attribute that hold channels. These
- * channels manage the flow of information in and out of gofuncs related to file
- * processing.
- */
-type TemplateFileMessenger struct {
-	Files  chan string
-	Errors chan error
-}
+/*
+Amalgamate consumes a slice of file paths and parse the file out into an HCL
+ast.
 
-/**
- * Consume a template and parse into HCL.
- *
- * This takes a templating engine, feeds in a template file (i.e. TemplateFile)
- * and merges the result with the content of a similarly named file.
- */
-func (t *TemplateFile) ConsumeTemplateFile(engine *ttemplate.Template, inputs map[string]string) error {
+This takes a templating engine, feeds in a template file (i.e. TemplateFile)
+and merges the result with the content of a similarly named file.
+*/
+func (t *TemplateFile) Amalgamate(files []string) error {
+	var ok bool
 	var err error
-	var files map[int]string
-	var messenger TemplateFileMessenger
+	var result *ast.File
 
-	messenger.Files = make(chan string, 2)
-	messenger.Errors = make(chan error, 1)
-
-	// Original File
-	go func(t *TemplateFile, messenger TemplateFileMessenger) {
-		messenger.Files <- t.destFileAbsPath()
-	}(t, messenger)
-	// Add Template File.
-	go t.writeToTempfile(engine, inputs, messenger)
-
-	files = make(map[int]string)
-
-	for i := 0; i < 2; i++ {
-		select {
-		case msg := <-messenger.Errors:
-			return fmt.Errorf("Error getting file %s: %s", t.Name, msg)
-		case f := <-messenger.Files:
-			files[i] = f
-		case <-time.After(time.Second * FILE_LOAD_TIMEOUT):
-			return fmt.Errorf("File loading timed out after %d seconds.", FILE_LOAD_TIMEOUT)
-		}
-	}
-
-	t.Hcl, err = t.mergeHCL(files)
-	if err != nil {
-		fmt.Println(fmt.Sprintf("Error loading hcl from %v", files))
-		return fmt.Errorf("Error: %v", err)
-	}
-
-	return nil
-}
-
-/**
- * Write Template to temporary file.
- */
-func (t *TemplateFile) writeToTempfile(engine *ttemplate.Template, inputs map[string]string, messenger TemplateFileMessenger) {
-	t.Body = string(t.RawBody)
-
-	tmpl, err := engine.Parse(t.Body)
-	if err != nil {
-		err = fmt.Errorf("Error parsing data from %s.", t.Name)
-
-		messenger.Errors <- err
-	}
-
-	// Create temporary file from template.
-	tmpFile, err := ioutil.TempFile("", "")
-	if err != nil {
-		err = fmt.Errorf("Error creating tmp output file %s.", t.Name)
-
-		messenger.Errors <- err
-	}
-
-	err = tmpl.Execute(tmpFile, &Input{
-		Variables: inputs,
-	})
-	if err != nil {
-		err = fmt.Errorf("Error executing templating file %s.", t.Name)
-
-		messenger.Errors <- err
-	}
-
-	// Pass temp file name to HCL
-	messenger.Files <- tmpFile.Name()
-}
-
-/**
- * Merges the HCL from multiple files and merges them into a single ast config.
- */
-func (t *TemplateFile) mergeHCL(files map[int]string) (*ast.File, error) {
-	result := &ast.File{}
-	// Parse it
 	// Load all the regular files, append them to each other.
 	for _, f := range files {
 		fi, err := os.Stat(f)
 		// (1) Does it exist and (2) have text to parse?
-		if err != nil {
-			continue
-		}
-		if fi.Size() < 1 {
+		if err != nil || fi.Size() < 1 {
 			continue
 		}
 
 		b, err := ioutil.ReadFile(f)
 		if err != nil {
-
-			return nil, err
+			return err
 		}
 
 		c, err := hcl.Parse(string(b))
 		if err != nil {
-
-			return nil, err
+			return err
 		}
-
-		var ok bool
-		// Empty file. Gotta go.
-		if _, ok := c.Node.(*ast.ObjectList); !ok {
+		// Empty file.
+		if _, ok = c.Node.(*ast.ObjectList); !ok {
 			continue
 		}
-		// First response. Can't possibly merge.
-		if _, ok := result.Node.(*ast.ObjectList); !ok {
+		// First non-empty response. Nothing to merge with.
+		if result == nil {
 			result = c
 			continue
 		}
 		// Now merge.
 		if result, ok = t.mergeNode(result, c).(*ast.File); !ok {
-
-			return nil, fmt.Errorf("Error merging files. %s", result)
+			err = fmt.Errorf("Error merging files. %s", result)
+			return err
 		}
 	}
 
-	return result, nil
+	t.Hcl = result
+
+	return err
 }
 
-/**
- * Write out the HCL config into properly formatted HCL.
- *
- * Equivalent of running `terraform fmt` on the created file.
- */
-func (t *TemplateFile) write(dest string) (err error) {
+/*
+Write out the HCL config into properly formatted HCL file.
+
+Equivalent of running `terraform fmt` on the created file.
+*/
+func (t *TemplateFile) Write(dest string) error {
 	var fileAbsPath string
 	var file *os.File
+	var err error
 
 	// Get user's current directory if empty string is passed.
 	if dest == "" {
 		dest, err = os.Getwd()
 		if err != nil {
-
 			return err
 		}
+		fileAbsPath = filepath.Join(dest, t.Name)
 	}
 
-	fileAbsPath = filepath.Join(dest, t.Name)
 	file, err = os.Create(fileAbsPath)
-
-	if err = printer.Fprint(file, t.Hcl.Node); err != nil {
-
+	if err != nil {
 		return err
 	}
 
-	return nil
+	err = printer.Fprint(file, t.Hcl)
+	if err != nil {
+		return err
+	}
+	// The HCL package doesn't add a newline to the end of the file, so we'll
+	// append one ourselves.
+	f, err := os.OpenFile(fileAbsPath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	defer f.Close()
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString("\n")
+
+	return err
 }
 
-/**
- * Absolute path to the destination file for the HCL config.
- */
-func (t *TemplateFile) destFileAbsPath() string {
+/*
+DestAbsPath returns the absolute path to the destination file for the HCL
+config. In this case, that is the current directory of the user and the template
+name.
+*/
+func (t *TemplateFile) DestAbsPath() string {
 	cwd, _ := os.Getwd()
 	origFile := filepath.Join(cwd, t.Name)
 
 	return origFile
 }
 
-/**
- * Merges two ASTs into a single tree.
- *
- * Check if Nodes are equal; If not, pass recursively to function.
- *
- * 	@TODO Make it work, I guess.
- */
-func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) (result ast.Node) {
-	var add bool
+/*
+MergeNode weaves together two ASTs into a single tree.
 
-	result = o
-	// The return value can either be the original node (o) or a new node
-	// passed by reference (result)
+Check if Nodes are equal; If not, pass recursively to function.
+
+@TODO Really needs to be cleaned up, I suppose. But hey, Hashicorp did it....
+https://github.com/hashicorp/hcl/blob/master/hcl/printer/nodes.go#L109
+*/
+func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) ast.Node {
+	// This "add" variable is used in several places. So I'll create it here.
+	var add bool
 
 	// Break now and return the original because the two nodes are different
 	// types or they're the same anyways. If they're not the same type, return the
-	// original, as well, because we don't want to
+	// original, as well, because we don't want to try and merge disparate types.
 	if reflect.TypeOf(o) != reflect.TypeOf(n) || reflect.DeepEqual(o, n) {
 
-		return
+		return o
 	}
 
 	if reflect.DeepEqual(o, reflect.Zero(reflect.TypeOf(o)).Interface()) {
-		result = n
-		return
+		return n
 	}
 
 	switch o := o.(type) {
@@ -296,6 +207,7 @@ func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) (result ast.Node) {
 		for !done {
 			e = &ast.ObjectList{}
 
+			// Filter out array of matches
 			for i := range o.Items {
 				okeys = make([]string, len(o.Items[i].Keys))
 				for d := range o.Items[i].Keys {
@@ -313,14 +225,19 @@ func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) (result ast.Node) {
 				matchers = append(matchers, m.Items...)
 			}
 
+			// Add those matches to new list if it doesn't already exist.
 			for _, m := range matchers {
-				add := true
+				add = true
 
 				if len(e.Items) < 1 {
 					e.Add(m)
 					continue
 				}
 
+				// Creates a map of [string]bool. All of the keys are added to the map.
+				// Because duplicate keys would override each other, if we have more
+				// keys in our map than we have keys in just one list, we know these two
+				// items are not equal (key-wise).
 				for ani := range e.Items {
 					matchedKeys := make(map[string]bool)
 					if len(e.Items[ani].Keys) == len(m.Keys) {
@@ -332,8 +249,10 @@ func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) (result ast.Node) {
 						}
 					}
 
+					// They match, so we'll do a merge instead.
 					if len(matchedKeys) == len(m.Keys) {
 						add = false
+						t.mergeNode(e.Items[ani], m)
 					}
 				}
 				if add {
@@ -432,8 +351,7 @@ func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) (result ast.Node) {
 	default:
 		// We shouldn't be here. But if we do get here, return the original because
 		// hopefully it's correct.
-
 	}
 
-	return
+	return o
 }

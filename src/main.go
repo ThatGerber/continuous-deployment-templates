@@ -10,10 +10,10 @@ import (
 )
 
 /*
-Application Exit Code. Changed dynamically as the application is run depending
-on errors encountered.
+ExitCode is the application's current ExitCode during processing. Changed
+dynamically as the application is run depending on errors encountered.
 */
-var ExitCode int = 0
+var ExitCode int
 
 func main() {
 	var output string
@@ -47,7 +47,7 @@ Templates
 		output = fmt.Sprintf("Generating files for template: %s", tmpl.Name)
 		fmt.Println(output)
 
-		err := tmpl.RunTemplate()
+		err := tmpl.Run()
 		if err != nil {
 			ExitCode = 1
 			output = fmt.Sprintf("Error in : %s", err)

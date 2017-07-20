@@ -1,9 +1,9 @@
 variable "environment" {
   description = "Name of Environment"
-  default = "{{.Variables.environment}}"
+  default = "{{.environment}}"
 }
 
 variable "network_cidr" {
   description = "CIDR for Network"
-  default = "{{.Variables.networkCidr}}"
+  default = "{{.networkCidr}}"
 }

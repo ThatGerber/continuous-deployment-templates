@@ -1,7 +1,7 @@
 
 # CI Server
 module "ci_server" {
-  source       = "{{.Variables.moduleSource}}//infrastructure/modules/ci/{{.Variables.ciType}}"
+  source       = "{{.moduleSource}}//infrastructure/modules/ci/{{.ciType}}"
   name         = "ci-server"
   environment  = "${var.environment}"
   network_cidr = "${var.network_cidr}"
