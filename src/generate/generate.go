@@ -8,11 +8,16 @@ import (
 	"strings"
 
 	"github.com/objectpartners/continuous-deployment-templates/src/templates"
+	"github.com/objectpartners/continuous-deployment-templates/src/templates/input"
 	"github.com/objectpartners/continuous-deployment-templates/templates/ciServer"
 	"github.com/objectpartners/continuous-deployment-templates/templates/simpleEmbedded"
 )
 
 var set *templates.Set
+
+type allInputs struct {
+	input.Array
+}
 
 func init() {
 	set = templates.NewSet()
@@ -27,6 +32,59 @@ Templates as set.
 func Templates() *templates.Set {
 
 	return set
+}
+
+/*
+SetVars prompts user for input on all variables.
+
+It looks through all templates and finds all user inputs.
+
+If a duplicate input name is found, it will check if the original one has a
+default value. If there is no default value, it replaces the input with the new
+input.
+
+If an input isn't already in the stack and doesn't have a default value it is
+sent to the top of the list to be prompted firstg.
+*/
+func SetVars(names []string) {
+	var uInputs = []input.UserInput{}
+	var skip bool
+
+	for _, name := range names {
+		t := Get(name)
+		templateInputs := t.Inputs
+
+		for _, val := range templateInputs.All() {
+			skip = false
+
+			for i, ui := range uInputs {
+				if ui.GetName() == val.GetName() {
+					if ui.GetValue() == "" {
+						uInputs[i] = val
+					}
+					skip = true
+				}
+			}
+
+			if !skip {
+				if val.GetValue() == "" {
+					uInputs = append([]input.UserInput{val}, uInputs...)
+				} else {
+					uInputs = append(uInputs, val)
+				}
+			}
+		}
+	}
+
+	var arr = &input.Array{Items: uInputs}
+
+	arr.Map(input.PromptUser)
+
+	set.Map(func(a *templates.Template) interface{} {
+		a.Inputs = arr
+
+		return a
+	})
 }
 
 /*

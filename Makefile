@@ -13,7 +13,7 @@ BIN_FILE = generate
 # Source
 SOURCEDIR = src
 SRCS := $(SOURCEDIR)/main.go
-SRCS += $(shell find $(SOURCEDIR) -name '*.go')
+SRCS += $(shell find $(SOURCEDIR) -name '*.go' | grep -v '$(SOURCEDIR)/main.go')
 
 # Templates
 TEMPLATE_DIR = templates
@@ -22,6 +22,8 @@ TEMPLATE_ASSET_FILES = $(TEMPLATE_DIR)/*/assets.go
 
 # Generated files
 CLEAN_TARGETS = $(BIN_FILE) $(GOBIN)/$(BIN_FILE) $(TEMPLATE_ASSET_FILES)
+
+ALL_FILES = $(SRCS) $(TEMPLATE_ASSET_FILES)
 
 # $(call go,cmd)
 define go
@@ -37,29 +39,27 @@ $(shell find $(patsubst %/,%,$(1)) \
 \( $(FIND_FLAGS) -name "*.tf" \) -print )
 endef
 
+BUILD_ID=$(shell echo "`git rev-parse HEAD | cut -c1-10`.`date "+%s"`")
 INSTALL_DIR := .
 
 $(BIN_FILE) : GOFLAGS = -o $(BIN_FILE) -ldflags="-X main.buildID=$(BUILD_ID)"
-$(BIN_FILE) : $(SRCS)
+$(BIN_FILE) : $(ALL_FILES)
 	$(MAKE) vet
 	$(MAKE) fmt
 	$(call go,build,$<)
 
-BUILD_ID=$(shell echo "`git rev-parse HEAD | cut -c1-10`.`date "+%s"`")
-
-$(GOBIN)/$(BIN_FILE) : $(SRCS)
+$(GOBIN)/$(BIN_FILE) : $(ALL_FILES)
 	$(call go,build,$<)
 
-$(SRCS) : $(TEMPLATE_ASSET_FILES)
+$(SRCS) : ;
 
-$(TEMPLATE_ASSET_FILES) : $(BINDATA_EXE) $(TEMPLATE_SRCS)
+$(TEMPLATE_ASSET_FILES) : $(TEMPLATE_SRCS) | $(BINDATA_EXE)
 	$(info Building $@)
 	@$(BINDATA_EXE) -prefix $(dir $@) -o $@ \
 		-pkg $(filter-out $(TEMPLATE_DIR) $(notdir $@),$(subst /, ,$@)) \
 		$(call templates,$(dir $@));
 
 $(TEMPLATE_SRCS): ;
-
 BINDATAPKG = jteeuwen/go-bindata
 BINDATA_EXE = $(GOPATH)/bin/go-bindata
 

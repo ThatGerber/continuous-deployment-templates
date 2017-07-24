@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/objectpartners/continuous-deployment-templates/src/generate"
 )
@@ -46,21 +47,31 @@ Templates
 	selected = generate.Select()
 	sort.Strings(selected)
 
+	generate.SetVars(selected)
+
 	for _, name := range selected {
 		tmpl := generate.Get(name)
+		output = `
+Generating files for template: %s`
+		fmt.Println(fmt.Sprintf(output, tmpl.Name))
 
-		output = fmt.Sprintf("Generating files for template: %s", tmpl.Name)
+		output = "Files: "
+		fnames := []string{}
+		for _, fName := range tmpl.Files {
+			fnames = append(fnames, fName.Name)
+		}
+		output += strings.Join(fnames, ", ")
 		fmt.Println(output)
 
 		err := tmpl.Run()
 		if err != nil {
 			ExitCode = 1
-			output = fmt.Sprintf("Fatal Error:\n%s", err)
+			output = fmt.Sprintf("Error in %s", err)
 			fmt.Println(output)
 		}
 	}
 
-	output = "Complete."
+	output = "\n---\nComplete."
 	fmt.Println(output)
 
 	os.Exit(ExitCode)

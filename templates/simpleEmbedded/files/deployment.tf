@@ -35,7 +35,7 @@ module "network" {
 }
 
 module "rancher" {
-  source    = "{{.Variables.moduleSource}}//infrastructure/modules/rancher/server/deployments/standalone"
+  source    = "{{.Var.moduleSource}}//infrastructure/modules/rancher/server/deployments/standalone"
   vpc_id    = "${module.network.vpc_id}"
   subnet_id = "${module.network.public_subnets[0]}"
   ami_id    = "${data.aws_ami.ubuntu_xenial.image_id}"

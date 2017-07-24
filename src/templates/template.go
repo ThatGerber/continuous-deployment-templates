@@ -35,9 +35,6 @@ func (t *Template) Run() error {
 	var err error
 	var file *TemplateFile
 
-	// Get Inputs
-	t.Inputs.Map(input.PromptUser)
-
 	// Generate Files from Templates
 	for _, file = range t.Files {
 		err = t.Generate(file)

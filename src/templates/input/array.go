@@ -8,6 +8,7 @@ type Collection interface {
 	All() []UserInput
 	Get(string) UserInput
 	Add(UserInput)
+	Update(UserInput)
 	Delete(string) int
 	Map(func(UserInput) UserInput)
 }
@@ -72,11 +73,16 @@ Get returns a single UserInput from a collection, referencing the variable name
 of the user input based on a string key.
 */
 func (c *Array) Get(key string) UserInput {
+	if len(c.Items) < 1 {
+		return nil
+	}
+
 	for i := range c.Items {
 		if c.Items[i].GetName() == key {
 			return c.Items[i]
 		}
 	}
+
 	return nil
 }
 
@@ -91,7 +97,32 @@ func (c *Array) All() []UserInput {
 Add will append additional UserInput to the collection.
 */
 func (c *Array) Add(item UserInput) {
-	c.Items = append(c.Items, item)
+	var match bool
+
+	for _, currentItem := range c.Items {
+		match = false
+		if item.GetName() == currentItem.GetName() {
+			match = true
+			if currentItem.GetValue() == "" {
+				c.Update(item)
+			}
+		}
+	}
+	if !match {
+		c.Items = append(c.Items, item)
+	}
+}
+
+/*
+Update item in list with contents of new item. Looks through list searches for
+an input with a matching name. If found, replaces that item with input item.
+*/
+func (c *Array) Update(item UserInput) {
+	for i, currentItem := range c.Items {
+		if item.GetName() == currentItem.GetName() {
+			c.Items[i] = item
+		}
+	}
 }
 
 /*

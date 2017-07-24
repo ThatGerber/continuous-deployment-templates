@@ -26,6 +26,14 @@ var Template = templates.Template{
 			Name:     "terraform.tfvars",
 			Template: "files/terraform.tfvars",
 		},
+		{
+			Name:     "deployment_inputs.tf",
+			Template: "files/deployment_inputs.tf",
+		},
+		{
+			Name:     "deployment_outputs.tf",
+			Template: "files/deployment_outputs.tf",
+		},
 	},
 	Inputs: input.CollectionFromStrings(&input.Array{}, []*input.StringInput{
 		{
