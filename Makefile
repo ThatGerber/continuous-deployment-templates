@@ -1,98 +1,93 @@
+.ONESHELL:
 SHELL = /bin/bash
-#.SHELLFLAGS = -e
+.SHELLFLAGS = -e
+
+.SUFFIXES:
 
 GO = go
 GOFLAGS =
 
-# Resulting binary
-EXE_FILE = generate
+# Binary
+BIN_FILE = generate
 
-TARGET = $(EXE_FILE)
-# Source Folder
+# Source
 SOURCEDIR = src
 SRCS := $(SOURCEDIR)/main.go
 SRCS += $(shell find $(SOURCEDIR) -name '*.go')
-SRCS += $(shell find $(SOURCEDIR) -name '*.tf')
-SRCS += $(shell find $(SOURCEDIR) -name '*.tfvars')
-SRCS += $(shell find $(SOURCEDIR) -name '*.json')
 
-# Templates Folder
-TMPLDIR = templates
-TMPLSRCS = $(shell find $(TMPLDIR) -name '*.tf')
-TMPLSRCS += $(shell find $(TMPLDIR) -name '*.tfvars')
-TMPLSRCS += $(shell find $(TMPLDIR) -name '*.json')
-TMPLSRCS += $(shell find $(TMPLDIR) -name 'Makefile')
+# Templates
+TEMPLATE_DIR = templates
+TEMPLATE_SRCS = $(call templates,$(TEMPLATE_DIR))
+TEMPLATE_ASSET_FILES = $(TEMPLATE_DIR)/*/assets.go
 
-SRCS += $(TMPLDIR)/*/assets.go
+# Generated files
+CLEAN_TARGETS = $(BIN_FILE) $(GOBIN)/$(BIN_FILE) $(TEMPLATE_ASSET_FILES)
 
-CLEAN_TARGETS = $(TARGET) $(GOBIN)/$(TARGET)
+# $(call go,cmd)
+define go
+$(info > Go $(1): $(@))
+$(strip $(GO) $(1) $(GOFLAGS) $(2) )
+endef
+
+TEMPLATE_SUFFIXES := *.tfvars *.json Makefile
+FIND_FLAGS=$(foreach search,$(TEMPLATE_SUFFIXES),-name "$(search)" -o)
+
+define templates
+$(shell find $(patsubst %/,%,$(1)) \
+\( $(FIND_FLAGS) -name "*.tf" \) -print )
+endef
+
+INSTALL_DIR := .
+
+$(BIN_FILE) : GOFLAGS = -o $(BIN_FILE) -ldflags="-X main.buildID=$(BUILD_ID)"
+$(BIN_FILE) : $(SRCS)
+	$(MAKE) vet
+	$(MAKE) fmt
+	$(call go,build,$<)
+
+BUILD_ID=$(shell echo "`git rev-parse HEAD | cut -c1-10`.`date "+%s"`")
+
+$(GOBIN)/$(BIN_FILE) : $(SRCS)
+	$(call go,build,$<)
+
+$(SRCS) : $(TEMPLATE_ASSET_FILES)
+
+$(TEMPLATE_ASSET_FILES) : $(BINDATA_EXE) $(TEMPLATE_SRCS)
+	$(info Building $@)
+	@$(BINDATA_EXE) -prefix $(dir $@) -o $@ \
+		-pkg $(filter-out $(TEMPLATE_DIR) $(notdir $@),$(subst /, ,$@)) \
+		$(call templates,$(dir $@));
+
+$(TEMPLATE_SRCS): ;
 
 BINDATAPKG = jteeuwen/go-bindata
 BINDATA_EXE = $(GOPATH)/bin/go-bindata
 
-# $(call go,cmd)
-define go
-$(strip $(GO) $(1) $(GOFLAGS) $(2) )
-endef
-
-define templates
-find $(1) \
-\( -name "*.tf" -o -name "*.tfvars" -o -name "*.json" -o -name "Makefile" \) \
--print
-endef
-
-.PHONY: all clean fmt get install run test vet
-
-all : $(TARGET)
-
-$(TARGET) : GOFLAGS += -o $(TARGET)
-$(TARGET) : $(SRCS) vet fmt
-	$(info > Go Build: $(TARGET))
-	$(call go,build,$<)
-
-$(GOBIN)/$(EXE_FILE) : TARGET = $(GOBIN)/$(EXE_FILE)
-$(GOBIN)/$(EXE_FILE) : GOFLAGS = -i
-$(GOBIN)/$(EXE_FILE) : $(SRCS) $(TARGET)
-
 $(BINDATA_EXE) : GOFLAGS = -v -u
 $(BINDATA_EXE) :
-	$(info > Go Get: $(BINDATAPKG))
 	$(call go,get,github.com/$(BINDATAPKG)/...)
 
-TEMPLATE_DIRS = `find $(TMPLDIR) -type d -depth '1' -print0 | xargs -0 -n1 -x basename`
+.PHONY: all clean fmt get run test vet
 
-$(TMPLDIR)/*/assets.go : $(TMPLSRCS) | $(BINDATA_EXE)
-	$(info Compiling Go files from assets...)
-	@for d in $(TEMPLATE_DIRS); do \
-		templates="`$(call templates,$(TMPLDIR)/$$d)`"; \
-		assets="`echo $$templates | tr "\n" " "`"; \
-		outfile="$(TMPLDIR)/$$d/assets.go"; \
-		$(BINDATA_EXE) -pkg $$d -prefix $(TMPLDIR)/$$d -o $(TMPLDIR)/$$d/assets.go $$assets; \
-		echo "Created asset file $$outfile"; \
-	done;
+install : GOFLAGS += -i -o $(GOBIN)/$(BIN_FILE) -ldflags="-X main.buildID=$(BUILD_ID)"
+install : $(GOBIN)/$(BIN_FILE)
 
-install : $(GOBIN)/$(EXE_FILE)
+run :
+	$(call go,$@,$<)
+
+get : $(BINDATA_EXE)
+	$(call go,$@ -t,./...)
+
+test :
+	$(call go,$@,./...)
+
+fmt :
+	$(info > Go $@:)
+	@gofmt -w -s .
+
+vet :
+	$(call go,tool vet,$(SOURCEDIR))
+	$(call go,tool vet,$(TEMPLATE_DIR))
 
 clean:
 	rm -rf $(CLEAN_TARGETS)
-
-fmt : $(SRCS)
-	$(info > Go $@: $<)
-	@gofmt -w -s .
-
-run : $(SRCS)
-	$(info > Go $@:)
-	$(call go,$@,$<)
-
-get : $(SRCS) $(BINDATA_EXE)
-	$(info > Go $@:)
-	$(call go,$@ -t,./...)
-
-test : $(SRCS)
-	$(info > Go $@:)
-	$(call go,$@,./...)
-
-vet : $(SRCS)
-	$(info > Go $@: $(SOURCEDIR)/ $(TMPLDIR)/)
-	$(shell go tool vet $(SOURCEDIR))
-	$(shell go tool vet $(TMPLDIR))

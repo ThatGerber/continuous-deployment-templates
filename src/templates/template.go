@@ -12,19 +12,16 @@ import (
 	"github.com/objectpartners/continuous-deployment-templates/src/templates/input"
 )
 
-// Templates is the map of available templates by name
-var Templates = map[string]*Template{}
-
 /*
 Template holds a name, a set of inputs, as well as a set of files to be
 parsed and interpolated (as TemplateFiles).
 */
 type Template struct {
 	Name   string
-	Inputs input.Collection
 	Files  []*TemplateFile
-	Assets AssetFilesystem
+	Inputs input.Collection
 	Engine *goTemplate.Template
+	ReadFile
 }
 
 /*
@@ -83,33 +80,22 @@ func (t *Template) Generate(file *TemplateFile) error {
 }
 
 /*
-TemplateNames is a slice of of the names of queued templates.
-*/
-func TemplateNames() (tmplNames []string) {
-	for key := range Templates {
-		tmplNames = append(tmplNames, key)
-	}
-	return
-}
-
-/*
 generateTempFile wil write a TemplateFile to a file within the system's temp
 directory, returning the name of the temporary file path.
 */
 func (t *Template) generateTempFile(file *TemplateFile) (string, error) {
 	var err error
-	var buf []byte
 	var filename string
 
-	buf, err = t.Assets.ReadFile(file.Template)
+	file.Body, err = t.ReadFile(file.Template)
 
 	if err != nil {
 		err = fmt.Errorf("error reading bytes from %s", file.Template)
 		return filename, err
 	}
 
-	file.Body = string(buf)
-	t.Engine, err = t.Engine.Parse(file.Body)
+	e := t.Engine
+	t.Engine, err = e.Parse(string(file.Body))
 	if err != nil {
 		err = fmt.Errorf("error parsing data from %s", file.Name)
 		return filename, err

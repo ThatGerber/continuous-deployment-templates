@@ -36,7 +36,7 @@ file and write it out as a formatted (terraform fmt) HCL config.
 type TemplateFile struct {
 	Name     string
 	Template string
-	Body     string
+	Body     []byte
 	Hcl      *ast.File
 }
 

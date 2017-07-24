@@ -44,7 +44,7 @@ type StringInput struct {
 CollectionFromStrings generates a new collection matching the type of the passed
 variable, and adds an array of inputs to the Collection
 */
-func CollectionFromStrings(strs []*StringInput, c Collection) Collection {
+func CollectionFromStrings(c Collection, strs []*StringInput) Collection {
 	for i := range strs {
 		c.Add(strs[i])
 	}
