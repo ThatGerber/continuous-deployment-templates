@@ -35,7 +35,7 @@ var Template = templates.Template{
 			Template: "files/deployment_outputs.tf",
 		},
 	},
-	Inputs: input.CollectionFromStrings(&input.Array{}, []*input.StringInput{
+	Inputs: input.NewArray([]*input.UserInput{
 		{
 			Name:        "profile",
 			Description: "AWS Credential Profile",

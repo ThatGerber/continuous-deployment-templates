@@ -1,7 +1,4 @@
-/*
-Package ciServer generates configuration for a Continuous Integration server.
-*/
-package ciServer
+package awsTerraform
 
 import (
 	goTemplate "text/template"
@@ -11,20 +8,32 @@ import (
 )
 
 /*
-Template struct, carries template to be added and doesn't require any imports.
+Template ...
 */
 var Template = templates.Template{
-	Name:     "ciServer",
+	Name:     "awsTerraform",
 	ReadFile: func(f string) ([]byte, error) { return Asset(f) },
-	Engine:   goTemplate.New("simpleEmbedded"),
+	Engine:   goTemplate.New("awsTerraform"),
 	Files: []*templates.TemplateFile{
 		{
-			Name:     "ci_inputs.tf",
-			Template: "templates/ci_inputs.tf",
+			Name:     "backend.tfvars",
+			Template: "templates/terraform.tfvars",
+		},
+		{
+			Name:     "config.tf",
+			Template: "templates/config.tf",
 		},
 		{
 			Name:     "ci_server.tf",
 			Template: "templates/ci_server.tf",
+		},
+		{
+			Name:     "Makefile",
+			Template: "templates/Makefile",
+		},
+		{
+			Name:     "terraform.tf",
+			Template: "templates/terraform.tf",
 		},
 	},
 	Inputs: input.NewArray([]*input.UserInput{
@@ -33,9 +42,32 @@ var Template = templates.Template{
 			Description: "Environment Name (alnum only)",
 		},
 		{
+			Name:        "awsRegion",
+			Description: "AWS Region",
+			Default:     "us-west-2",
+		},
+		{
+			Name:        "awsProfile",
+			Description: "AWS IAM Profile",
+		},
+		{
 			Name:        "networkCidr",
 			Default:     "10.0.0.0/16",
 			Description: "CIDR of CI Server's Network",
+		},
+		{
+			Name:        "tfBackend",
+			Default:     "local",
+			Description: "Type of Terraform Backend to Initiate. [local, s3]",
+		},
+		{
+			Name:        "tfStateBucket",
+			Description: "Name of Terraform State Bucket and Key",
+		},
+		{
+			Name:        "tfStateRegion",
+			Default:     "us-west-2",
+			Description: "Region to place Terraform State Bucket",
 		},
 		{
 			Name:        "ciType",

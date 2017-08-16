@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -25,10 +26,6 @@ A template file includes:
   use those files from a distributed binary), we use a separate tool to
   munge the file into a dynamically generated Golang assets.go file:
   `templates/**\/assets.go`
-* The HCL, which is a Terraform ast representing contents of any file in
-  the user's working directory that is named the same as the
-  TemplateFile.Name **as well as** the contents from the generated template
-  file.
 
 The HCL attribute needs to merge the content of the template and the original
 file and write it out as a formatted (terraform fmt) HCL config.
@@ -37,7 +34,6 @@ type TemplateFile struct {
 	Name     string
 	Template string
 	Body     []byte
-	Hcl      *ast.File
 }
 
 /*
@@ -48,44 +44,54 @@ This takes a templating engine, feeds in a template file (i.e. TemplateFile)
 and merges the result with the content of a similarly named file.
 */
 func (t *TemplateFile) Amalgamate(files []string) error {
-	var ok bool
-	var err error
-	var result *ast.File
+	var (
+		err         error
+		isHCL       bool
+		result      []byte
+		newBytes    []byte
+		tfFileNames []string
+	)
+
+	tfFileNames = []string{
+		"tf",
+		"tfvars",
+	}
 
 	// Load all the regular files, append them to each other.
 	for _, f := range files {
+		isHCL = false
+
 		fi, err := os.Stat(f)
 		// (1) Does it exist and (2) have text to parse?
 		if err != nil || fi.Size() < 1 {
 			continue
 		}
 
-		b, err := ioutil.ReadFile(f)
+		newBytes, err = ioutil.ReadFile(f)
 		if err != nil {
 			return err
 		}
 
-		c, err := hcl.Parse(string(b))
-		if err != nil {
-			return err
+		for i := range tfFileNames {
+			if t.Name[len(t.Name)-len(tfFileNames[i]):] == tfFileNames[i] {
+				isHCL = true
+			}
 		}
-		// Empty file.
-		if _, ok = c.Node.(*ast.ObjectList); !ok {
-			continue
-		}
-		// First non-empty response. Nothing to merge with.
-		if result == nil {
-			result = c
-			continue
-		}
-		// Now merge.
-		if result, ok = t.mergeNode(result, c).(*ast.File); !ok {
-			err = fmt.Errorf("Error merging files. %s", result)
-			return err
+
+		if isHCL {
+			result, err = parseHCL(result, newBytes)
+			if err != nil {
+				return err
+			}
+		} else {
+			result, err = parseText(result, newBytes)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	t.Hcl = result
+	t.Body = result
 
 	return err
 }
@@ -108,24 +114,34 @@ func (t *TemplateFile) Write(dest string) error {
 		}
 		fileAbsPath = filepath.Join(dest, t.Name)
 	}
-
+	// Open and clear file.
 	file, err = os.Create(fileAbsPath)
+	defer file.Close()
 	if err != nil {
 		return err
 	}
 
-	err = printer.Fprint(file, t.Hcl)
+	// Format bytes (if possible
+	_, err = file.Write(t.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to write all bytes for %s", file.Name())
 	}
+	file.Sync()
+
 	// The HCL package doesn't add a newline to the end of the file, so we'll
 	// append one ourselves.
-	f, err := os.OpenFile(fileAbsPath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
-	defer f.Close()
+	fi, err := file.Stat()
 	if err != nil {
 		return err
 	}
-	_, err = f.WriteString("\n")
+	endOfFile := []byte("\n")
+	newLine := []byte("\n")
+
+	_, err = file.ReadAt(endOfFile, fi.Size()-int64(len(newLine)))
+
+	if !bytes.Equal(endOfFile, newLine) {
+		_, err = file.Write(newLine)
+	}
 
 	return err
 }
@@ -143,6 +159,63 @@ func (t *TemplateFile) DestAbsPath() string {
 }
 
 /*
+ParseHCLFile
+*/
+func parseHCL(src []byte, contents []byte) ([]byte, error) {
+	var (
+		o   *ast.File
+		n   *ast.File
+		buf *bytes.Buffer
+		by  []byte
+		ok  bool
+		err error
+	)
+
+	n, err = hcl.Parse(string(contents))
+	if err != nil {
+		return src, err
+	}
+
+	// Empty file.
+	if _, ok := n.Node.(*ast.ObjectList); !ok {
+		return by, err
+	}
+	// First non-empty response. Nothing to merge with.
+	if src != nil {
+		// Now merge.
+		o, err = hcl.Parse(string(src))
+		if err != nil {
+			return src, err
+		}
+
+		if n, ok = mergeNode(o, n).(*ast.File); !ok {
+			err = fmt.Errorf("Error merging files. %s", n)
+			return src, err
+		}
+	}
+	buf = bytes.NewBuffer(by)
+	err = printer.Fprint(buf, n)
+	by = []byte(buf.String())
+
+	return by, err
+}
+
+/*
+parseText
+
+@TODO Write this so that it can merge the two slices. For now, we'll just take
+the new one, if it's not empty.
+*/
+func parseText(src []byte, contents []byte) ([]byte, error) {
+
+	if len(contents) != 0 {
+		src = contents
+	}
+
+	return src, nil
+}
+
+/*
 MergeNode weaves together two ASTs into a single tree.
 
 Check if Nodes are equal; If not, pass recursively to function.
@@ -150,7 +223,7 @@ Check if Nodes are equal; If not, pass recursively to function.
 @TODO Really needs to be cleaned up, I suppose. But hey, Hashicorp did it....
 https://github.com/hashicorp/hcl/blob/master/hcl/printer/nodes.go#L109
 */
-func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) ast.Node {
+func mergeNode(o ast.Node, n ast.Node) ast.Node {
 	// This "add" variable is used in several places. So I'll create it here.
 	var add bool
 
@@ -171,7 +244,7 @@ func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) ast.Node {
 		// Merge root file
 		n := reflect.ValueOf(n).Interface().(*ast.File)
 
-		t.mergeNode(o.Node, n.Node)
+		mergeNode(o.Node, n.Node)
 
 	case *ast.ObjectList:
 		// Compare all items in list against each other.
@@ -188,7 +261,7 @@ func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) ast.Node {
 			oMatches := o.Filter(nkeys...)
 			if len(oMatches.Items) >= 1 {
 				for l := range oMatches.Items {
-					t.mergeNode(n.Items[i], oMatches.Items[l])
+					mergeNode(n.Items[i], oMatches.Items[l])
 				}
 			}
 
@@ -252,7 +325,7 @@ func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) ast.Node {
 					// They match, so we'll do a merge instead.
 					if len(matchedKeys) == len(m.Keys) {
 						add = false
-						t.mergeNode(e.Items[ani], m)
+						mergeNode(e.Items[ani], m)
 					}
 				}
 				if add {
@@ -271,11 +344,11 @@ func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) ast.Node {
 		// Compare two list items and merge.
 		n := reflect.ValueOf(n).Interface().(*ast.ObjectItem)
 
-		t.mergeNode(o.Val, n.Val)
+		mergeNode(o.Val, n.Val)
 
 		// Merge any comments.
-		t.mergeNode(o.LeadComment, n.LeadComment)
-		t.mergeNode(o.LineComment, n.LineComment)
+		mergeNode(o.LeadComment, n.LeadComment)
+		mergeNode(o.LineComment, n.LineComment)
 
 	case *ast.ObjectKey:
 	// We shouldn't be merging object keys, really.
@@ -284,15 +357,15 @@ func (t *TemplateFile) mergeNode(o ast.Node, n ast.Node) ast.Node {
 		// An HCL Object
 		n := reflect.ValueOf(n).Interface().(*ast.ObjectType)
 
-		t.mergeNode(o.List, n.List)
+		mergeNode(o.List, n.List)
 
 	case *ast.LiteralType:
 		// An HCL string, float, boolean, or number
 		n := reflect.ValueOf(n).Interface().(*ast.LiteralType)
 
 		o.Token = n.Token
-		t.mergeNode(o.LeadComment, n.LeadComment)
-		t.mergeNode(o.LineComment, n.LineComment)
+		mergeNode(o.LeadComment, n.LeadComment)
+		mergeNode(o.LineComment, n.LineComment)
 
 	case *ast.ListType:
 		// An HCL List

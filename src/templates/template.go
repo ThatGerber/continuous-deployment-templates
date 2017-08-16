@@ -19,7 +19,7 @@ parsed and interpolated (as TemplateFiles).
 type Template struct {
 	Name   string
 	Files  []*TemplateFile
-	Inputs input.Collection
+	Inputs *input.Array
 	Engine *goTemplate.Template
 	ReadFile
 }

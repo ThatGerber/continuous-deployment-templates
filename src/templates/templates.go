@@ -19,7 +19,7 @@ func NewSet() *Set {
 }
 
 /*
-Add template to Collection
+Add template to Array
 
 The templates.Template map contains the name and value of any generated
 templates.

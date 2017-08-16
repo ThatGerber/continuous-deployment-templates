@@ -4,26 +4,27 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/objectpartners/continuous-deployment-templates/src/templates"
 	"github.com/objectpartners/continuous-deployment-templates/src/templates/input"
+
+	"github.com/objectpartners/continuous-deployment-templates/templates/awsTerraform"
 	"github.com/objectpartners/continuous-deployment-templates/templates/ciServer"
 	"github.com/objectpartners/continuous-deployment-templates/templates/simpleEmbedded"
 )
 
-var set *templates.Set
+var TemplateCollection *templates.Set
 
-type allInputs struct {
-	input.Array
-}
-
+// init
 func init() {
-	set = templates.NewSet()
+	TemplateCollection = templates.NewSet()
 
-	set.Add(&ciServer.Template)
-	set.Add(&simpleEmbedded.Template)
+	TemplateCollection.Add(&ciServer.Template)
+	TemplateCollection.Add(&simpleEmbedded.Template)
+	TemplateCollection.Add(&awsTerraform.Template)
 }
 
 /*
@@ -31,7 +32,7 @@ Templates as set.
 */
 func Templates() *templates.Set {
 
-	return set
+	return TemplateCollection
 }
 
 /*
@@ -44,10 +45,10 @@ default value. If there is no default value, it replaces the input with the new
 input.
 
 If an input isn't already in the stack and doesn't have a default value it is
-sent to the top of the list to be prompted firstg.
+sent to the top of the list to be prompted first.
 */
 func SetVars(names []string) {
-	var uInputs = []input.UserInput{}
+	var uInputs = []*input.UserInput{}
 	var skip bool
 
 	for _, name := range names {
@@ -58,7 +59,7 @@ func SetVars(names []string) {
 			skip = false
 
 			for i, ui := range uInputs {
-				if ui.GetName() == val.GetName() {
+				if ui.Name == val.Name {
 					if ui.GetValue() == "" {
 						uInputs[i] = val
 					}
@@ -68,7 +69,7 @@ func SetVars(names []string) {
 
 			if !skip {
 				if val.GetValue() == "" {
-					uInputs = append([]input.UserInput{val}, uInputs...)
+					uInputs = append([]*input.UserInput{val}, uInputs...)
 				} else {
 					uInputs = append(uInputs, val)
 				}
@@ -80,7 +81,7 @@ func SetVars(names []string) {
 
 	arr.Map(input.PromptUser)
 
-	set.Map(func(a *templates.Template) interface{} {
+	TemplateCollection.Map(func(a *templates.Template) interface{} {
 		a.Inputs = arr
 
 		return a
@@ -93,7 +94,7 @@ Get a template by name.
 func Get(name string) *templates.Template {
 	var template *templates.Template
 
-	for _, template = range set.Templates {
+	for _, template = range TemplateCollection.Templates {
 		if template.Name == name {
 			break
 		}
@@ -109,7 +110,7 @@ func TemplateNames() []string {
 	var raw []interface{}
 	var tmplNames []string
 
-	raw = set.Map(func(t *templates.Template) interface{} {
+	raw = TemplateCollection.Map(func(t *templates.Template) interface{} {
 
 		return t.Name
 	})
@@ -134,6 +135,7 @@ func Select() []string {
 	var selected []string
 
 	tmplts = TemplateNames()
+	sort.Strings(tmplts)
 
 	max := len(tmplts)
 
